@@ -1,0 +1,162 @@
+<h2>前端双栏布局 — 论文阅读 Agent</h2>
+<p class="subtitle">借鉴 Paperflow 的双栏设计 + R0/R1/R2 证据徽标体系</p>
+
+<div class="section">
+  <h3>主布局：左论文 + 右对话</h3>
+</div>
+
+<div class="split">
+  <div class="mockup" style="width: 48%">
+    <div class="mockup-header">📄 Paper Viewer（左侧：论文阅读面板）</div>
+    <div class="mockup-body">
+      <div class="mock-nav">Attention Is All You Need · Vaswani et al. · NeurIPS 2017</div>
+      <div style="padding: 12px; background: #f8f9fa; border-bottom: 1px solid #dee2e6;">
+        <div style="font-weight: 600; margin-bottom: 4px; font-size: 13px;">📑 章节导航</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+          <span style="background: #e9ecef; padding: 2px 8px; border-radius: 4px; font-size: 11px;">Abstract</span>
+          <span style="background: #e9ecef; padding: 2px 8px; border-radius: 4px; font-size: 11px;">1. Introduction</span>
+          <span style="background: #2563eb; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px;">2. Background</span>
+          <span style="background: #e9ecef; padding: 2px 8px; border-radius: 4px; font-size: 11px;">3. Model</span>
+          <span style="background: #e9ecef; padding: 2px 8px; border-radius: 4px; font-size: 11px;">4. Experiments</span>
+          <span style="background: #e9ecef; padding: 2px 8px; border-radius: 4px; font-size: 11px;">5. Conclusion</span>
+        </div>
+      </div>
+      <div style="padding: 16px; font-size: 13px; line-height: 1.6;">
+        <p style="font-weight: 600; margin-bottom: 8px;">2. Background</p>
+        <p style="margin-bottom: 12px;">The goal of reducing sequential computation also forms the foundation of the Extended Neural GPU, ByteNet and ConvS2S, all of which use convolutional neural networks as basic building block, computing hidden representations in parallel for all input and output positions...</p>
+        <p style="margin-bottom: 12px; background: #fff3cd; padding: 4px 8px; border-left: 3px solid #f59e0b;">
+          <span style="font-size: 10px; background: #f59e0b; color: white; padding: 1px 5px; border-radius: 3px;">R0</span>
+          &nbsp;引用原文高亮区域 ← 前端 PDF.js 渲染
+        </p>
+        <p>Self-attention, sometimes called intra-attention, is an attention mechanism relating different positions of a single sequence in order to compute a representation of the sequence...</p>
+      </div>
+      <div style="margin: 12px; border: 1px dashed #dee2e6; border-radius: 6px; padding: 8px; text-align: center; color: #6b7280; font-size: 12px;">
+        🔍 PDF全文搜索 &nbsp;&nbsp;|&nbsp;&nbsp; 📖 章节快速跳转
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup" style="width: 48%">
+    <div class="mockup-header">💬 Chat Panel（右侧：对话分析）</div>
+    <div class="mockup-body">
+      <div style="padding: 12px; border-bottom: 1px solid #dee2e6; min-height: 180px;">
+        <div style="margin-bottom: 8px;">
+          <span style="font-size: 11px; color: #6b7280;">👤 用户</span>
+          <p style="background: #eff6ff; padding: 8px 12px; border-radius: 8px; margin: 4px 0;">Transformer 的核心贡献是什么？和之前的模型有什么本质区别？</p>
+        </div>
+        <div>
+          <span style="font-size: 11px; color: #6b7280;">🤖 助手</span>
+          <div style="background: #f8f9fa; padding: 8px 12px; border-radius: 8px; margin: 4px 0; font-size: 13px; line-height: 1.5;">
+            <p>Transformer 的核心贡献是<span class="label" style="background: #10b981;">R0</span><mark>用纯注意力机制替代循环/卷积</mark>，实现完全并行计算。与 RNN 的本质区别在于：</p>
+            <p>1. <mark>并行化</mark>：无需像 RNN 那样序列计算 <span class="label" style="background: #10b981;">R0</span><span style="font-size: 10px; color: #6b7280;"> 第2页</span></p>
+            <p>2. <mark>长距离依赖</mark>：通过 Self-Attention 直接连接任意位置 <span class="label" style="background: #f59e0b;">R2</span><span style="font-size: 10px; color: #6b7280;"> 研究判断</span></p>
+            <p>3. 训练效率提升 10× <span class="label" style="background: #3b82f6;">R1</span><span style="font-size: 10px; color: #6b7280;"> GPT-3 paper</span></p>
+          </div>
+          <div style="margin-top: 6px; display: flex; gap: 8px; align-items: center;">
+            <span style="font-size: 11px; background: #e9ecef; padding: 2px 8px; border-radius: 12px;">📊 评分 8/10</span>
+            <span style="font-size: 11px; color: #2563eb; cursor: pointer;">📋 展开思考链路 ▼</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Evidence Badge System -->
+      <div style="padding: 12px; background: #fafafa; border-bottom: 1px solid #dee2e6;">
+        <div style="font-weight: 600; font-size: 12px; margin-bottom: 8px;">📌 证据标注系统</div>
+        <div style="display: flex; gap: 12px;">
+          <div style="flex: 1; border: 2px solid #10b981; border-radius: 8px; padding: 8px;">
+            <div style="font-weight: 700; color: #10b981; font-size: 14px;">R0</div>
+            <div style="font-size: 11px; color: #6b7280;">严格来自当前论文<br>可定位到页码+段落</div>
+            <div style="font-size: 10px; color: #10b981; margin-top: 4px;">✓ 点击跳转PDF原文</div>
+          </div>
+          <div style="flex: 1; border: 2px solid #3b82f6; border-radius: 8px; padding: 8px;">
+            <div style="font-weight: 700; color: #3b82f6; font-size: 14px;">R1</div>
+            <div style="font-size: 11px; color: #6b7280;">来自外部来源<br>记录来源元数据</div>
+            <div style="font-size: 10px; color: #3b82f6; margin-top: 4px;">✓ 含来源链接</div>
+          </div>
+          <div style="flex: 1; border: 2px solid #f59e0b; border-radius: 8px; padding: 8px;">
+            <div style="font-weight: 700; color: #f59e0b; font-size: 14px;">R2</div>
+            <div style="font-size: 11px; color: #6b7280;">推论/判断/研究意见<br>显示推理依据链</div>
+            <div style="font-size: 10px; color: #f59e0b; margin-top: 4px;">⚠ 非原文事实</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Follow-up Suggestions -->
+      <div style="padding: 12px;">
+        <div style="font-weight: 600; font-size: 12px; margin-bottom: 8px;">💡 追问建议</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+          <span style="background: #eff6ff; color: #2563eb; padding: 4px 10px; border-radius: 16px; font-size: 11px; cursor: pointer;">注意力机制的具体计算过程？</span>
+          <span style="background: #eff6ff; color: #2563eb; padding: 4px 10px; border-radius: 16px; font-size: 11px; cursor: pointer;">为什么说没有循环结构更高效？</span>
+          <span style="background: #eff6ff; color: #2563eb; padding: 4px 10px; border-radius: 16px; font-size: 11px; cursor: pointer;">推荐相关论文</span>
+        </div>
+      </div>
+
+      <div style="margin: 12px; border-top: 1px solid #dee2e6; padding-top: 8px;">
+        <input class="mock-input" placeholder="💬 输入你对这篇论文的问题..." style="width: 80%;">
+        <button class="mock-button" style="margin-left: 8px;">发送</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>布局切换模式（借鉴 Kimi + ChatGPT Canvas）</h3>
+</div>
+
+<div style="display: flex; gap: 12px; margin-top: 8px;">
+  <div class="card" data-choice="dual" onclick="toggleSelect(this)" style="flex: 1;">
+    <div class="card-body">
+      <h3>📖 + 💬 双栏</h3>
+      <p>论文左 + 对话右（默认）</p>
+    </div>
+  </div>
+  <div class="card" data-choice="chat" onclick="toggleSelect(this)" style="flex: 1;">
+    <div class="card-body" style="text-align: center;">
+      <h3>💬 全宽对话</h3>
+      <p>论文折叠，对话占满</p>
+    </div>
+  </div>
+  <div class="card" data-choice="paper" onclick="toggleSelect(this)" style="flex: 1;">
+    <div class="card-body" style="text-align: center;">
+      <h3>📄 沉浸阅读</h3>
+      <p>对话折叠，论文全宽</p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>证据悬停预览（Citation Tooltip — 借鉴 Perplexity 内联引用）</h3>
+</div>
+
+<div class="mockup" style="max-width: 480px;">
+  <div class="mockup-header">鼠标悬停 R0 徽标时的 Tooltip</div>
+  <div class="mockup-body" style="padding: 12px;">
+    <div style="border: 1px solid #d1d5db; border-radius: 8px; padding: 12px; background: white; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+      <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+        <span style="font-weight: 700; color: #10b981; font-size: 13px;">🟢 R0 · 原文证据</span>
+        <span style="font-size: 11px; color: #6b7280;">第2页 · Section 2</span>
+      </div>
+      <div style="background: #f9fafb; padding: 8px 12px; border-left: 3px solid #10b981; font-size: 12px; line-height: 1.5; margin-bottom: 8px;">
+        "The goal of reducing sequential computation also forms the foundation of the Extended Neural GPU, ByteNet and ConvS2S, all of which use convolutional neural networks..."
+      </div>
+      <div style="display: flex; gap: 8px; font-size: 11px;">
+        <span style="color: #2563eb; cursor: pointer;">📍 跳转PDF定位</span>
+        <span style="color: #2563eb; cursor: pointer;">📋 复制引用</span>
+        <span style="color: #ef4444; cursor: pointer;">🚩 报告错误</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Show Your Work — 步骤指示器（借鉴 Claude Code 节点可见性）</h3>
+</div>
+
+<div style="background: #1e1e2e; border-radius: 8px; padding: 16px; color: #cdd6f4; font-family: monospace; font-size: 13px;">
+  <div style="color: #a6e3a1; margin-bottom: 6px;">✅ reader &nbsp;&nbsp;&nbsp;&nbsp;解析完成 (1.2s) · 识别出 6 个章节 · 3 个图表</div>
+  <div style="color: #a6e3a1; margin-bottom: 6px;">✅ classify &nbsp;&nbsp;意图: qa (问答) · 置信度 0.94</div>
+  <div style="color: #a6e3a1; margin-bottom: 6px;">✅ planner &nbsp;&nbsp;&nbsp;生成执行计划: 3 步 · 等待审批...</div>
+  <div style="color: #f9e2af; margin-bottom: 6px;">⏸ &nbsp;&nbsp;Human-in-the-Loop: 请审批执行计划</div>
+  <div style="color: #6c7086; margin-bottom: 6px;">○ retrieve &nbsp;&nbsp;等待中...</div>
+  <div style="color: #6c7086; margin-bottom: 6px;">○ generate &nbsp;&nbsp;等待中...</div>
+</div>
