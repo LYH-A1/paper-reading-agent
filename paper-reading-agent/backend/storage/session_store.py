@@ -47,10 +47,10 @@ class SessionStore:
     async def list_sessions(self, paper_id: str) -> list[dict]:
         conn = await db.get_db()
         try:
-            sessions = []
+            results = []
             async with conn.execute("SELECT * FROM sessions WHERE paper_id = ? ORDER BY updated_at DESC", (paper_id,)) as cursor:
-                async for row in sessions:
-                    sessions.append(dict(row))
-            return sessions
+                async for row in cursor:
+                    results.append(dict(row))
+            return results
         finally:
             await conn.close()
