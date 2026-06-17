@@ -5,7 +5,7 @@ from fastapi import FastAPI, UploadFile, File, Form, Request
 from fastapi.responses import StreamingResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from backend.agents.supervisor import run_agent
-from backend.models.state import AgentState, Paper
+from backend.models.paper import Paper
 from backend.storage.paper_store import PaperStore
 from backend.config import config
 
