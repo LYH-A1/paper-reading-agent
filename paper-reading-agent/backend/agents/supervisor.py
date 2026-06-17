@@ -60,11 +60,13 @@ async def run_agent(paper_path: str, query: str) -> AgentState:
     config_dict = {"configurable": {"thread_id": initial_state.paper.file_path}}
 
     # Run through to planner (will interrupt)
-    state = await graph.ainvoke(initial_state, config_dict)
+    raw_state = await graph.ainvoke(initial_state, config_dict)
+    state = AgentState(**{k: v for k, v in raw_state.items() if k in AgentState.__dataclass_fields__})
 
     # Resume past interrupt (HITL auto-approved in Phase 1)
     if state.plan:
-        state = await graph.ainvoke(None, config_dict)
+        raw_state = await graph.ainvoke(None, config_dict)
+        state = AgentState(**{k: v for k, v in raw_state.items() if k in AgentState.__dataclass_fields__})
 
     return state
 
