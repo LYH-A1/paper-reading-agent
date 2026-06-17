@@ -71,7 +71,11 @@ class LLMClient:
         try:
             resp = await self._call(body, stream=False)
             data = resp.json()
-            content = data.get("content", [{}])[0].get("text", "")
+            content = ""
+            for block in data.get("content", []):
+                if block.get("type") == "text":
+                    content = block.get("text", "")
+                    break
             elapsed = int((time.monotonic() - t0) * 1000)
             usage = data.get("usage", {})
             api_logger.log(timestamp=time.strftime("%Y-%m-%dT%H:%M:%S"), model=self.cfg.model,
@@ -96,10 +100,12 @@ class LLMClient:
                 if line.startswith("data: "):
                     data = json.loads(line[6:])
                     if data.get("type") == "content_block_delta":
-                        delta = data.get("delta", {}).get("text", "")
-                        if delta:
-                            token_count += 1
-                            yield delta
+                        delta = data.get("delta", {})
+                        if delta.get("type") == "text_delta":
+                            text = delta.get("text", "")
+                            if text:
+                                token_count += 1
+                                yield text
             elapsed = int((time.monotonic() - t0) * 1000)
             api_logger.log(timestamp=time.strftime("%Y-%m-%dT%H:%M:%S"), model=self.cfg.model,
                            messages_count=len(messages), tokens_used=token_count,
