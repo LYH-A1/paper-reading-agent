@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+*.db
+outputs/api_log.jsonl
+.env
