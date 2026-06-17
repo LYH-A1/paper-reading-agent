@@ -1,7 +1,7 @@
-import sqlite3
+import aiosqlite
 from pathlib import Path
 from langgraph.graph import StateGraph, END
-from langgraph.checkpoint.sqlite import SqliteSaver
+from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from backend.models.state import AgentState
 from backend.models.paper import Paper
 from backend.agents.reader import reader_node
@@ -9,7 +9,7 @@ from backend.agents.qa import classify_node, planner_node, retrieve_node, genera
 from backend.agents.reviewer import reviewer_node, rewrite_node, decide_loop, output_node
 from backend.config import config
 
-def build_graph() -> StateGraph:
+async def build_graph() -> StateGraph:
     graph = StateGraph(AgentState)
 
     graph.add_node("reader", reader_node)
@@ -43,8 +43,8 @@ def build_graph() -> StateGraph:
     # NOTE: SqliteSaver.from_conn_string is a context manager (@contextmanager).
     # Using it outside a 'with' block returns a generator, which is not a valid
     # checkpointer. We create the connection directly instead.
-    conn = sqlite3.connect(str(config.db_path), check_same_thread=False)
-    checkpointer = SqliteSaver(conn)
+    conn = await aiosqlite.connect(str(config.db_path))
+    checkpointer = AsyncSqliteSaver(conn)
     return graph.compile(
         checkpointer=checkpointer,
         interrupt_after=["planner"]  # HITL: pause after plan generation
@@ -52,7 +52,7 @@ def build_graph() -> StateGraph:
 
 async def run_agent(paper_path: str, query: str) -> AgentState:
     """Run complete agent pipeline. Returns final AgentState."""
-    graph = build_graph()
+    graph = await build_graph()
     initial_state = AgentState(
         paper=Paper(file_path=str(Path(paper_path).resolve())),
         user_query=query
@@ -63,7 +63,7 @@ async def run_agent(paper_path: str, query: str) -> AgentState:
     state = await graph.ainvoke(initial_state, config_dict)
 
     # Resume past interrupt (HITL auto-approved in Phase 1)
-    if state.get("plan"):
+    if state.plan:
         state = await graph.ainvoke(None, config_dict)
 
     return state
