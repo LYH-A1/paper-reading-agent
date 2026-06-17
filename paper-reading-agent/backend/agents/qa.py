@@ -57,18 +57,14 @@ async def generate_node(state: AgentState) -> AgentState:
 
     full_answer = ""
     try:
-        async for token in llm_client.chat_stream(
+        # Phase 1: use chat() (more reliable than streaming for now)
+        full_answer, _ = await llm_client.chat(
             messages=[{"role": "user", "content": f"Paper report: {state.report}\n\nContext: {context}\n\nQuestion: {state.user_query}{rewrite_feedback}"}],
             system=prompt
-        ):
-            full_answer += token
+        )
     except Exception as e:
         logger.error(f"Generate failed: {e}")
-        if full_answer:
-            logger.info(f"Returning partial answer ({len(full_answer)} chars), will retry full generation")
-            state.error = f"Generation interrupted: {e}. Partial answer shown."
-        else:
-            state.error = f"Generation failed: {e}"
+        state.error = f"Generation failed: {e}"
 
     state.answer = full_answer
     state.trace.append("generate")
@@ -91,6 +87,10 @@ async def observe_node(state: AgentState) -> AgentState:
 def check_observe_result(state: AgentState) -> str:
     """Conditional edge after observe."""
     obs = state.observation or {}
+    # Prevent infinite observe loop: max 3 retrieve→generate→observe cycles
+    observe_cycles = state.trace.count("observe")
+    if observe_cycles >= 3:
+        return "reviewer"
     if not obs.get("plan_valid", True):
         return "planner"
     if not obs.get("sufficient", False):
