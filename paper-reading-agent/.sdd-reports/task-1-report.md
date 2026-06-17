@@ -53,7 +53,9 @@ Config(llm=LLMConfig(base_url='...', model='deepseek-v4-pro', ...), rewrite_max=
 ## Commits Made
 
 1. `8fd3854` (base commit — pre-existing)
-2. New commit: `feat: project scaffolding with config, logging, and dependencies`
+2. `53f4765` — `feat: project scaffolding with config, logging, and dependencies`
+3. `64f0827` — `chore: remove __pycache__ from version control`
+4. `da8418d` — `chore: add .gitignore to exclude __pycache__, .db, and env files`
 
 ## Self-Review
 
