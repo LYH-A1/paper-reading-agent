@@ -23,12 +23,13 @@ export default function PDFCanvas({ pdfDoc, pageNumber, scale, onRenderComplete 
   const renderTaskRef = useRef<pdfjsLib.RenderTask | null>(null)
 
   useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-
     let cancelled = false
 
     async function renderPage() {
+      // Re-read the ref inside the async function so TS narrows after the guard
+      const canvas = canvasRef.current
+      if (!canvas) return
+
       try {
         const page = await pdfDoc.getPage(pageNumber)
         if (cancelled) return
@@ -46,7 +47,8 @@ export default function PDFCanvas({ pdfDoc, pageNumber, scale, onRenderComplete 
         ctx.save()
         ctx.scale(devicePixelRatio, devicePixelRatio)
 
-        const renderContext: pdfjsLib.RenderParameters = {
+        // Use inferred type instead of pdfjsLib.RenderParameters (not exported in pdfjs-dist 4.x)
+        const renderContext = {
           canvasContext: ctx,
           viewport,
         }

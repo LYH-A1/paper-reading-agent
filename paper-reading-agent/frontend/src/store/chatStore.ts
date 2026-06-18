@@ -22,7 +22,7 @@ interface ChatState {
   appendToken: (token: string) => void
   addStepNode: (node: string) => void
   setCurrentStep: (step: string) => void
-  setHitlPlan: (plan: Plan) => void
+  setHitlPlan: (plan: Plan | null) => void
   setThreadId: (id: string) => void
   setStatus: (status: ChatStatus) => void
   setError: (msg: string) => void
@@ -53,7 +53,7 @@ export const useChatStore = create<ChatState>((set) => ({
 
   setCurrentStep: (step) => set({ currentStep: step }),
 
-  setHitlPlan: (plan) => set({ hitlPlan: plan, status: 'awaiting_approval' }),
+  setHitlPlan: (plan) => set({ hitlPlan: plan, status: plan ? 'awaiting_approval' : 'streaming' }),
 
   setThreadId: (id) => set({ threadId: id }),
 

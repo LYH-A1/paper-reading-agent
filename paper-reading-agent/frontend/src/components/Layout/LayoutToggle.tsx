@@ -18,6 +18,8 @@ export default function LayoutToggle() {
           key={mode}
           className={layout === mode ? styles.active : ''}
           onClick={() => setLayout(mode)}
+          aria-label={`Switch to ${label.toLowerCase()} layout`}
+          aria-pressed={layout === mode}
         >
           {icon} {label}
         </button>
