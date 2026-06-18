@@ -1,0 +1,33 @@
+.topBar { display: flex; justify-content: space-between; align-items: center; padding: 8px 16px; background: #fff; border-bottom: 1px solid #e5e7eb; }
+.title { font-size: 1.1rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%; }
+.topBarRight { display: flex; gap: 8px; align-items: center; }
+.menuBtn { padding: 4px 10px; border: 1px solid #ccc; border-radius: 4px; background: #fff; cursor: pointer; }
+
+.layoutToggle { display: flex; gap: 2px; }
+.layoutToggle button { padding: 4px 8px; border: 1px solid #ccc; background: #fff; cursor: pointer; font-size: 0.8rem; border-radius: 4px; }
+.layoutToggle button.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+
+.sidebarOverlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.3); z-index: 200; }
+.sidebar { position: fixed; top: 0; right: 0; width: 320px; height: 100%; background: #fff; overflow-y: auto; padding: 16px; box-shadow: -2px 0 8px rgba(0,0,0,0.1); }
+.closeBtn { background: none; border: none; font-size: 1.5rem; cursor: pointer; float: right; }
+
+.libraryPanel h3, .sessionHistory h3 { margin-bottom: 8px; font-size: 0.9rem; color: #555; }
+.libraryPanel ul, .sessionHistory ul { list-style: none; }
+.libraryPanel li, .sessionHistory li { padding: 6px 8px; cursor: pointer; border-radius: 4px; font-size: 0.85rem; }
+.libraryPanel li:hover, .sessionHistory li:hover { background: #f3f4f6; }
+.empty { color: #9ca3af; font-size: 0.8rem; }
+.sessionTitle { display: block; }
+.sessionDate { font-size: 0.7rem; color: #9ca3af; }
+
+.split { display: flex; flex: 1; overflow: hidden; }
+.splitLeft, .splitRight { overflow: hidden; }
+.splitHandle { width: 6px; cursor: col-resize; background: #e5e7eb; flex-shrink: 0; }
+.splitHandle:hover { background: #2563eb; }
+
+.tracePanel { margin-top: 8px; font-size: 0.75rem; color: #6b7280; }
+.tracePanel summary { cursor: pointer; }
+
+.followUp { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.followUp h4 { font-size: 0.8rem; color: #6b7280; width: 100%; margin-bottom: 2px; }
+.followUp button { padding: 4px 10px; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 16px; cursor: pointer; font-size: 0.8rem; }
+.followUp button:hover { background: #e0e7ff; }
