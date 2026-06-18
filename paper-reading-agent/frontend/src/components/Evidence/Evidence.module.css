@@ -1,0 +1,22 @@
+.badge { display: inline-block; font-size: 0.7rem; font-weight: 700; padding: 1px 5px; border-radius: 3px; margin: 0 1px; vertical-align: middle; cursor: pointer; }
+.badge:hover { opacity: 0.8; }
+
+.badgeR0 { background: #fee2e2; color: #991b1b; }
+.badgeR1 { background: #fef3c7; color: #92400e; }
+.badgeR2 { background: #dbeafe; color: #1e40af; }
+
+.popover { position: absolute; z-index: 100; width: 320px; max-height: 400px; overflow-y: auto; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 12px; font-size: 0.85rem; }
+.popoverHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.popoverLevel { font-weight: 600; }
+.closeBtn { background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #6b7280; }
+.popoverClaim { font-style: italic; margin-bottom: 8px; color: #333; }
+.popoverDetails { border-top: 1px solid #e5e7eb; padding-top: 8px; }
+.quote { color: #6b7280; font-size: 0.8rem; margin-bottom: 4px; }
+.jumpBtn { margin-top: 6px; padding: 4px 10px; background: #2563eb; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
+.reasoning { color: #6b7280; margin-bottom: 4px; }
+.chainToggle { background: none; border: none; color: #2563eb; cursor: pointer; font-size: 0.8rem; padding: 2px 0; }
+
+.chainList { list-style: none; padding-left: 16px; margin: 4px 0; }
+.chainItem { margin: 4px 0; font-size: 0.8rem; }
+.miniBadge { display: inline-block; font-size: 0.65rem; padding: 0px 4px; border-radius: 2px; margin-right: 4px; }
+.chainClaim { color: #555; }
