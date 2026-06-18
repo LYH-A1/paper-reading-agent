@@ -101,13 +101,16 @@ async def stream_graph(
     paper_id: str,
     query: str,
     thread_id: str | None = None,
+    session_id: str | None = None,
 ) -> AsyncGenerator[str, None]:
     """Stream graph execution as SSE-formatted strings.
 
     Two-segment protocol:
       Segment 1: runs reader → classify → planner, yields events, stops at
                  ``event: hitl`` (if should_interrupt) or continues to end.
-      Segment 2: called with ``thread_id=`` to resume after approval.
+      Segment 2: called with ``thread_id=`` and ``session_id=`` to resume
+                 after approval. ``session_id`` must be the value from the
+                 Segment 1 init event so messages are recorded correctly.
 
     Each yielded string is a complete SSE ``data: ...\n\n`` line (or
     ``event: ...\ndata: ...\n\n`` for named events).
@@ -119,10 +122,10 @@ async def stream_graph(
     )
     tid = thread_id or str(uuid.uuid4())
 
-    # Create session for this query (Segment 1 only — Segment 2 reuses)
+    # Create or reuse session
     session_store = SessionStore()
-    session_id = thread_id or await session_store.create_session(paper_id)
-    if not thread_id:
+    if not session_id:
+        session_id = await session_store.create_session(paper_id)
         init_payload = {
             "event": "init",
             "thread_id": tid,

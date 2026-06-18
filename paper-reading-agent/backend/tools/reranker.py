@@ -60,8 +60,6 @@ class FlashRankReranker(Reranker):
         if not passages:
             return []
 
-        self._ensure_loaded()
-
         # Build flashrank input
         rank_input = [
             {"id": p.chunk_id, "text": p.text}
@@ -69,6 +67,7 @@ class FlashRankReranker(Reranker):
         ]
 
         try:
+            self._ensure_loaded()
             scored = self._ranker.rerank(query, rank_input)
         except Exception:
             logger.warning("FlashRank rerank failed, returning original order")

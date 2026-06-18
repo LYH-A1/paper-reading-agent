@@ -11,7 +11,8 @@ export function useApproval() {
     async (threadId: string, feedback?: string) => {
       try {
         await approvePlan({ thread_id: threadId, approved: true, feedback })
-        startResume(threadId)
+        const sessionId = store.getState().currentSessionId
+        startResume(threadId, sessionId || undefined)
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Approval failed'
         store.getState().setError(message)

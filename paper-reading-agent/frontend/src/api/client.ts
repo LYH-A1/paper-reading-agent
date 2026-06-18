@@ -37,11 +37,12 @@ export function getPDFTextUrl(paperId: string): string {
   return `${BASE}/pdf/${encodeURIComponent(paperId)}/text`
 }
 
-export function getSSEUrl(params: { paper_id?: string; query?: string; thread_id?: string }): string {
+export function getSSEUrl(params: { paper_id?: string; query?: string; thread_id?: string; session_id?: string }): string {
   const sp = new URLSearchParams()
   if (params.paper_id) sp.set('paper_id', params.paper_id)
   if (params.query) sp.set('query', params.query)
   if (params.thread_id) sp.set('thread_id', params.thread_id)
+  if (params.session_id) sp.set('session_id', params.session_id)
   return `${BASE}/query?${sp.toString()}`
 }
 

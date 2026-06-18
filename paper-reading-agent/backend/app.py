@@ -137,6 +137,7 @@ async def query_paper(
     paper_id: str = Query(default="", description="Paper ID for new queries (Segment 1)"),
     query: str = Query(default="", description="Question about the paper"),
     thread_id: str = Query(default="", description="Thread ID for resume (Segment 2)"),
+    session_id: str = Query(default="", description="Session ID for resume (Segment 2) — must match Segment 1 init event"),
 ):
     """SSE streaming endpoint for agent queries.
 
@@ -146,12 +147,17 @@ async def query_paper(
         If intent is compare/recommend, stops with ``event: hitl``.
         Otherwise, runs through to completion.
 
-      Segment 2 (thread_id):
+      Segment 2 (thread_id + session_id):
         Resumes after approval, runs retrieve -> generate -> ... -> done.
+        ``session_id`` is required to record messages correctly.
     """
     async def event_stream():
         try:
-            async for sse_str in stream_graph(paper_id, query, thread_id=thread_id or None):
+            async for sse_str in stream_graph(
+                paper_id, query,
+                thread_id=thread_id or None,
+                session_id=session_id or None,
+            ):
                 yield sse_str
         except Exception as e:
             yield f"event: error\ndata: {json.dumps({'event': 'error', 'message': str(e)})}\n\n"
@@ -342,7 +348,8 @@ def _export_markdown(session: dict) -> Response:
                             details.append(url)
                     elif level == "R2":
                         based_on = ev.get("based_on_evidence_ids", [])
-                        conf = ev.get("confidence", 0)
+                        conf = ev.get("confidence")
+                        conf = 0 if conf is None else conf
                         if based_on:
                             details.append(f"Based on {', '.join(based_on)}")
                         details.append(f"confidence: {conf:.0%}")

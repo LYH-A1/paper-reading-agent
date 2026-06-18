@@ -67,10 +67,10 @@ export function useSSE() {
     connect(url)
   }, [connect])
 
-  const startResume = useCallback((threadId: string) => {
+  const startResume = useCallback((threadId: string, sessionId?: string) => {
     store.getState().setStatus('connecting')
     store.getState().setHitlPlan(null)
-    const url = getSSEUrl({ thread_id: threadId })
+    const url = getSSEUrl({ thread_id: threadId, session_id: sessionId })
     connect(url)
   }, [connect])
 
