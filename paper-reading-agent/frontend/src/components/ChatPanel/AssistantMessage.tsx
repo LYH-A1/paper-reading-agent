@@ -1,4 +1,4 @@
-import { Fragment, useMemo } from 'react'
+import { useMemo } from 'react'
 import EvidenceBadge from '@/components/Evidence/EvidenceBadge'
 import type { Evidence, QualityScore } from '@/types'
 import styles from './ChatPanel.module.css'

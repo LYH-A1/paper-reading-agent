@@ -10,11 +10,10 @@ import { useApproval } from '@/hooks/useApproval'
 import styles from './ChatPanel.module.css'
 
 export default function ChatPanel() {
-  const { start, abort } = useSSE()
+  const { start } = useSSE()
   const { approve, reject } = useApproval()
   const status = useChatStore((s) => s.status)
   const hitlPlan = useChatStore((s) => s.hitlPlan)
-  const threadId = useChatStore((s) => s.threadId)
   const paper = useAppStore((s) => s.paper)
 
   const isStreaming = status === 'connecting' || status === 'streaming'
