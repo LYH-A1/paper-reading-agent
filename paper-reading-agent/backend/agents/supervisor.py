@@ -1,13 +1,28 @@
+"""Supervisor: build graph, stream events, HITL support."""
+
+import json
 import aiosqlite
 from pathlib import Path
+from typing import AsyncGenerator
+
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+
 from backend.models.state import AgentState
 from backend.models.paper import Paper
 from backend.agents.reader import reader_node
 from backend.agents.qa import classify_node, planner_node, retrieve_node, generate_node, observe_node, check_observe_result
 from backend.agents.reviewer import reviewer_node, rewrite_node, decide_loop, output_node
 from backend.config import config
+
+
+def should_interrupt(state: AgentState) -> bool:
+    """Return True if the graph should HITL-interrupt after planning.
+
+    Only interrupts for compare/recommend intents; summary and qa pass through.
+    """
+    return state.intent in ("compare", "recommend")
+
 
 async def build_graph() -> StateGraph:
     graph = StateGraph(AgentState)
@@ -47,8 +62,9 @@ async def build_graph() -> StateGraph:
     checkpointer = AsyncSqliteSaver(conn)
     return graph.compile(
         checkpointer=checkpointer,
-        interrupt_after=["planner"]  # HITL: pause after plan generation
+        interrupt_after=["planner"],  # HITL: pause after plan generation
     )
+
 
 async def run_agent(paper_path: str, query: str) -> AgentState:
     """Run complete agent pipeline. Returns final AgentState."""
@@ -70,7 +86,141 @@ async def run_agent(paper_path: str, query: str) -> AgentState:
 
     return state
 
+
 def run_agent_sync(paper_path: str, query: str) -> AgentState:
     """Synchronous wrapper for CLI usage."""
     import asyncio
     return asyncio.run(run_agent(paper_path, query))
+
+
+async def stream_graph(
+    paper_path: str,
+    query: str,
+    thread_id: str | None = None,
+) -> AsyncGenerator[str, None]:
+    """Stream graph execution as SSE-formatted strings.
+
+    Two-segment protocol:
+      Segment 1: runs reader → classify → planner, yields events, stops at
+                 ``event: hitl`` (if should_interrupt) or continues to end.
+      Segment 2: called with ``thread_id=`` to resume after approval.
+
+    Each yielded string is a complete SSE ``data: ...\n\n`` line (or
+    ``event: ...\ndata: ...\n\n`` for named events).
+    """
+    graph = await build_graph()
+    initial_state = AgentState(
+        paper=Paper(file_path=str(Path(paper_path).resolve())),
+        user_query=query,
+    )
+    tid = thread_id or initial_state.paper.file_path
+    config_dict = {"configurable": {"thread_id": tid}}
+
+    # ----- Segment 1: first pass (reader → classify → planner) -----
+    first_pass = True
+    async for event in graph.astream_events(
+        initial_state,
+        config_dict,
+        version="v2",
+    ):
+        kind = event.get("event", "")
+        node_name = event.get("name", "")
+        data = event.get("data", {})
+
+        # Yield node-enter events
+        if kind == "on_chain_start" and node_name in (
+            "reader", "classify", "planner",
+        ):
+            yield f"event: node\ndata: {json.dumps({'event': 'node', 'node': node_name})}\n\n"
+
+        # After planner completes, check if we should HITL
+        if kind == "on_chain_end" and node_name == "planner":
+            # Extract state from output
+            output = data.get("output", {})
+            if isinstance(output, dict):
+                state_intent = output.get("intent", "")
+                state_plan = output.get("plan")
+            else:
+                state_intent = getattr(output, "intent", "")
+                state_plan = getattr(output, "plan", None)
+
+            if state_plan is not None and should_interrupt(
+                AgentState(
+                    paper=Paper(file_path=str(Path(paper_path).resolve())),
+                    user_query=query,
+                    intent=state_intent or "",
+                )
+            ):
+                yield (
+                    f"event: hitl\n"
+                    f"data: {json.dumps({'event': 'hitl', 'plan': state_plan, 'thread_id': tid})}\n\n"
+                )
+                return  # Stop Segment 1 — wait for approval
+
+        # Pass through other events in first pass
+        yield _serialize_event(kind, node_name, data)
+        first_pass = False
+
+    # ----- Segment 2: resume after approval (retrieve → generate → …) -----
+    async for event in graph.astream_events(
+        None,  # Resume with None
+        config_dict,
+        version="v2",
+    ):
+        kind = event.get("event", "")
+        node_name = event.get("name", "")
+        data = event.get("data", {})
+
+        if kind == "on_chain_start" and node_name in (
+            "retrieve", "generate", "observe", "reviewer", "rewrite", "output",
+        ):
+            yield f"event: node\ndata: {json.dumps({'event': 'node', 'node': node_name})}\n\n"
+
+        if kind == "on_chain_end" and node_name == "output":
+            output = data.get("output", {})
+            if isinstance(output, dict):
+                state = AgentState(**{k: v for k, v in output.items() if k in AgentState.__dataclass_fields__})
+            else:
+                state = output if isinstance(output, AgentState) else AgentState()
+            yield _build_done_payload(state)
+            return
+
+        yield _serialize_event(kind, node_name, data)
+
+
+def _serialize_event(kind: str, node_name: str, data: dict) -> str:
+    """Serialize a generic astream_events event to SSE string."""
+    try:
+        payload = {
+            "event": kind,
+            "node": node_name,
+            "data": str(data.get("input", "")),
+        }
+        return f"event: streaming\ndata: {json.dumps(payload)}\n\n"
+    except Exception:
+        return "event: streaming\ndata: {}\n\n"
+
+
+def _build_done_payload(state: AgentState) -> str:
+    """Build the final SSE done event from AgentState."""
+    evidence_summary = []
+    for e in state.evidence_list:
+        evidence_summary.append({
+            "evidence_id": e.evidence_id,
+            "level": e.level.value if e.level else "R2",
+            "claim": e.claim[:100],
+            "sentence_index": e.sentence_index,
+            "char_start": e.char_start,
+            "char_end": e.char_end,
+        })
+
+    payload = {
+        "event": "done",
+        "answer": state.answer,
+        "quality_score": {
+            "total": state.quality_score.total if state.quality_score else 0,
+        },
+        "trace": state.trace,
+        "evidence_list": evidence_summary,
+    }
+    return f"event: done\ndata: {json.dumps(payload)}\n\n"
