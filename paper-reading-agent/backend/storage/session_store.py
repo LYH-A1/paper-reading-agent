@@ -44,6 +44,45 @@ class SessionStore:
         finally:
             await conn.close()
 
+    async def get_session_with_paper(self, session_id: str) -> dict | None:
+        """Get session with paper title joined."""
+        conn = await db.get_db()
+        try:
+            async with conn.execute(
+                """SELECT s.*, p.title as paper_title
+                   FROM sessions s
+                   JOIN papers p ON s.paper_id = p.paper_id
+                   WHERE s.session_id = ?""",
+                (session_id,),
+            ) as cursor:
+                session_row = await cursor.fetchone()
+                if not session_row:
+                    return None
+
+            messages = []
+            async with conn.execute(
+                "SELECT * FROM messages WHERE session_id = ? ORDER BY message_id",
+                (session_id,),
+            ) as cursor:
+                async for row in cursor:
+                    messages.append({
+                        "role": row["role"],
+                        "content": row["content"],
+                        "meta": json.loads(row["meta"]) if row["meta"] else {},
+                        "created_at": row["created_at"],
+                    })
+
+            return {
+                "session_id": session_row["session_id"],
+                "paper_id": session_row["paper_id"],
+                "paper_title": session_row["paper_title"],
+                "created_at": session_row["created_at"],
+                "updated_at": session_row["updated_at"],
+                "messages": messages,
+            }
+        finally:
+            await conn.close()
+
     async def list_sessions(self, paper_id: str) -> list[dict]:
         conn = await db.get_db()
         try:

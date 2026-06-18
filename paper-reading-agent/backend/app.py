@@ -1,15 +1,18 @@
 """FastAPI application — SSE streaming, HITL, PDF endpoints."""
 
 import json
+import re
 import asyncio
 from pathlib import Path
+from datetime import datetime, timezone
 from fastapi import FastAPI, UploadFile, File, Form, Request, Query
-from fastapi.responses import StreamingResponse, HTMLResponse, JSONResponse, FileResponse
+from fastapi.responses import StreamingResponse, HTMLResponse, JSONResponse, FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from backend.agents.supervisor import stream_graph, run_agent
 from backend.models.paper import Paper
 from backend.storage.paper_store import PaperStore
+from backend.storage.session_store import SessionStore
 from backend.config import config
 
 app = FastAPI(title="Paper Reading Agent")
@@ -164,3 +167,135 @@ async def get_pdf_text(paper_id: str):
         })
     doc.close()
     return {"pages": pages}
+
+
+@app.get("/api/sessions/{session_id}/export")
+async def export_session(session_id: str, format: str = Query(default="md", pattern="^(md|json)$")):
+    """Export a session conversation as Markdown or JSON."""
+    store = SessionStore()
+    session = await store.get_session_with_paper(session_id)
+    if not session:
+        return JSONResponse({"error": "Session not found"}, status_code=404)
+
+    if format == "json":
+        return _export_json(session)
+    return _export_markdown(session)
+
+
+def _slugify(text: str, max_len: int = 50) -> str:
+    """Convert text to a safe filename slug."""
+    slug = re.sub(r'[^\w一-鿿-]', '-', text, flags=re.UNICODE)
+    slug = re.sub(r'-+', '-', slug).strip('-')
+    return slug[:max_len]
+
+
+def _export_json(session: dict) -> Response:
+    data = {
+        "session_id": session["session_id"],
+        "paper_id": session["paper_id"],
+        "paper_title": session["paper_title"],
+        "exported_at": datetime.now(timezone.utc).isoformat(),
+        "messages": [
+            {
+                "role": msg["role"],
+                "content": msg["content"],
+                "evidence_list": msg.get("meta", {}).get("evidence_list", []),
+                "quality_score": msg.get("meta", {}).get("quality_score"),
+                "trace": msg.get("meta", {}).get("trace", []),
+                "followup_questions": msg.get("meta", {}).get("followup_questions", []),
+                "timestamp": msg.get("created_at", ""),
+            }
+            for msg in session["messages"]
+        ],
+    }
+    title_slug = _slugify(session.get("paper_title", "export"))
+    date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    filename = f"session-{title_slug}-{date_str}.json"
+    return Response(
+        content=json.dumps(data, indent=2, ensure_ascii=False),
+        media_type="application/json; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+def _export_markdown(session: dict) -> Response:
+    lines = []
+    lines.append(f"# Session: {session['session_id']}")
+    lines.append(f"Date: {session.get('created_at', '')} | Paper: {session.get('paper_title', 'Unknown')}")
+    lines.append("")
+    lines.append("---")
+    lines.append("")
+
+    for msg in session["messages"]:
+        if msg["role"] == "user":
+            lines.append(f"## Q: {msg['content']}")
+            lines.append("")
+        else:
+            lines.append(f"**Answer:** {msg['content']}")
+            lines.append("")
+            meta = msg.get("meta", {})
+            evidence_list = meta.get("evidence_list", [])
+            if evidence_list:
+                lines.append(f"**Evidence ({len(evidence_list)} items):**")
+                for ev in evidence_list:
+                    level = ev.get("level", "R2")
+                    claim = ev.get("claim", "")
+                    details = []
+                    if level == "R0":
+                        page = ev.get("page")
+                        section = ev.get("section_heading")
+                        quote = ev.get("quote", "")
+                        if page:
+                            details.append(f"Page {page}")
+                        if section:
+                            details.append(f"§{section}")
+                    elif level == "R1":
+                        title = ev.get("source_title")
+                        url = ev.get("source_url")
+                        if title:
+                            details.append(f"Source: {title}")
+                        if url:
+                            details.append(url)
+                    elif level == "R2":
+                        based_on = ev.get("based_on_evidence_ids", [])
+                        conf = ev.get("confidence", 0)
+                        if based_on:
+                            details.append(f"Based on {', '.join(based_on)}")
+                        details.append(f"confidence: {conf:.0%}")
+                    detail_str = " · ".join(details) if details else ""
+                    prefix = f'  - [{level}] "{claim}"'
+                    if detail_str:
+                        prefix += f" ({detail_str})"
+                    lines.append(prefix)
+                lines.append("")
+            quality = meta.get("quality_score")
+            if quality:
+                lines.append(
+                    f"**Quality:** {quality.get('total', '?')}/10 "
+                    f"(Relevance: {quality.get('relevance', '?')}/3, "
+                    f"Consistency: {quality.get('consistency', '?')}/4, "
+                    f"Completeness: {quality.get('completeness', '?')}/3)"
+                )
+                lines.append("")
+            lines.append("---")
+            lines.append("")
+
+    followups = []
+    for msg in session["messages"]:
+        if msg["role"] == "assistant":
+            fu = msg.get("meta", {}).get("followup_questions", [])
+            followups.extend(fu)
+    if followups:
+        lines.append("## Suggested Follow-ups")
+        for q in followups:
+            lines.append(f"- {q}")
+        lines.append("")
+
+    title_slug = _slugify(session.get("paper_title", "export"))
+    date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    filename = f"session-{title_slug}-{date_str}.md"
+    return Response(
+        content="\n".join(lines),
+        media_type="text/markdown; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
