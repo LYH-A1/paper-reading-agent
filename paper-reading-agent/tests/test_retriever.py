@@ -64,3 +64,16 @@ def test_is_chinese(retriever):
     """Chinese text detection works."""
     assert retriever._is_chinese("这是什么")
     assert not retriever._is_chinese("what is this")
+
+
+def test_retriever_uses_reranker(retriever):
+    """retrieve() calls reranker.rerank() when a reranker is provided."""
+    from backend.tools.reranker import BM25FallbackReranker
+    fake_reranker = BM25FallbackReranker()
+    retriever.reranker = fake_reranker
+    # Match chunk count (2 from sample_paper fixture)
+    retriever.bm25.get_scores.return_value = [0.9, 0.5]
+    retriever._dense_search = lambda q, k: []
+    results = retriever.retrieve("query", top_k=3)
+    assert len(results) == 2
+    assert results[0].scores["bm25"] > results[-1].scores["bm25"]

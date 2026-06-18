@@ -3,11 +3,13 @@ from backend.models.paper import Paper
 from backend.models.state import RetrievedChunk
 from backend.utils.text_splitter import split_text
 from backend.utils.logger import logger
+from backend.tools.reranker import Reranker, get_reranker
 
 class HybridRetriever:
-    """Hybrid RAG: BM25 + ChromaDB. FlashRank added in Phase 3."""
-    def __init__(self, paper: Paper, embedding_model: str = "auto"):
+    """Hybrid RAG: BM25 + ChromaDB with pluggable reranker."""
+    def __init__(self, paper: Paper, embedding_model: str = "auto", reranker: Reranker | None = None):
         self.paper = paper
+        self.reranker = reranker if reranker is not None else get_reranker()
         self.chunks = self._build_chunks()
         self._build_indices(embedding_model)
 
@@ -71,17 +73,21 @@ class HybridRetriever:
                 page=1, section_heading="Abstract", source="fallback", scores={}
             )]
 
-        # Phase 1: sort by BM25 score (FlashRank replaces this in Phase 3)
-        merged.sort(key=lambda c: c.scores.get("bm25", 0), reverse=True)
+        # Phase 3: rerank merged results with pluggable reranker
+        merged = self.reranker.rerank(query, merged)
         results = merged[:top_k]
 
-        avg_score = sum(c.scores.get("bm25", 0) for c in results) / len(results) if results else 0
+        # Low-score detection after rerank
+        avg_score = (
+            sum(c.scores.get("rerank", c.scores.get("bm25", 0)) for c in results) / len(results)
+            if results else 0
+        )
         if avg_score < 0.3:
             logger.warning(f"Low average relevance: {avg_score:.2f}, expanding to top-10")
             results = merged[:10]
 
         for c in results:
-            c.source = "bm25" if "bm25" in c.scores else "dense"
+            c.source = c.source or "rerank"
 
         return results
 
