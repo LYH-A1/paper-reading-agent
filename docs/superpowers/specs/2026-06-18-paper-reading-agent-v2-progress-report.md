@@ -1,6 +1,6 @@
 # 论文阅读 Agent V2 工作进度报告
 
-> 日期：2026-06-18 | 状态：Phase 1 完成，Web 服务运行中
+> 日期：2026-06-18 | 状态：Phase 1 ✅ Phase 2 ✅，Web 服务就绪，React 前端就绪
 
 ---
 
@@ -140,11 +140,56 @@ DeepSeek API 适配问题修复：
 
 ---
 
-## 五、下一步
+## 五、Phase 2 完成
+
+> 日期：2026-06-18 | 状态：✅ Phase 2 完成
+
+### Phase 2 产出
+
+| 维度 | 内容 |
+|------|------|
+| **前端** | 33 文件 — Vite + React 18 + TypeScript + PDF.js + zustand |
+| **后端** | 2 文件修改 — SSE `astream_events` + HITL interrupt + 新端点 |
+| **测试** | 40 前端 + 35 后端 = 75 测试全通过 |
+| **Commits** | 15 commits |
+| **SDD Reports** | 10 task reports + 10 task reviews (`.git/sdd/`) |
+
+### Phase 2 设计文档 (docs/superpowers/)
+
+| 文件 | 说明 |
+|------|------|
+| **`specs/2026-06-18-paper-reading-agent-v2-phase2-design.md`** | Phase 2 正式设计文档（10 章）：组件架构、SSE 协议、数据流、HITL、证据系统 |
+| **`plans/2026-06-18-paper-reading-agent-v2-phase2-plan.md`** | Phase 2 实现计划：11 个 Task × 逐步指令 |
+
+### Phase 2 新增功能
+
+| 功能 | 详情 |
+|------|------|
+| **PDF 查看器** | PDF.js Canvas + 透明 TextLayer，支持缩放/翻页/章节导航 |
+| **双栏布局** | 可拖拽分隔条，3 种模式（双栏/全宽对话/全宽论文），响应式 <768px |
+| **SSE 流式对话** | 两段式 SSE 协议，token 级流式渲染，init/node/token/hitl/done 事件 |
+| **证据系统** | R0/R1/R2 三色徽标内联到回答文本，EvidencePopover 悬停 tooltip，R2 推理链递归展示（上限 3 层） |
+| **证据高亮跳转** | 点击 R0 徽标 → PDF 切页 + bbox 高亮（quote 文本搜索匹配 → 精确 → 模糊 → 降级） |
+| **HITL 计划审批** | PlanApprovalBanner（编辑/批准/取消），条件触发（仅 compare/recommend），两段 SSE 断开重连 |
+| **论文上传 & 库** | 拖拽上传 + 文件选择器，论文库 CRUD |
+| **StepIndicator** | Show Your Work 步骤条，实时节点状态（✓完成 / ◌进行中 / ○等待） |
+| **后端新端点** | `GET /api/query` SSE, `POST /api/approve`, `GET /api/pdf/{id}`, `GET /api/pdf/{id}/text` |
+
+### 已知问题
+
+| 问题 | 严重度 | 状态 |
+|------|--------|------|
+| TypeScript 严格空检查警告（canvas refs） | 低 | React ref 固有，不影响运行 |
+| `pdfjs-dist` 类型导出不匹配 | 低 | 库版本差异，mock 测试不受影响 |
+| R2 推理链高亮首屏竞态 | 低 | 需二次渲染触发 |
+| LayoutToggle 按钮缺少 aria-label | 低 | 可访问性改进项 |
+
+---
+
+## 六、下一步
 
 | 阶段 | 内容 | 预估 |
 |------|------|------|
-| Phase 2 | 完整 React 前端（PDF.js 证据高亮、双栏布局、HITL 审批） | 2 周 |
 | Phase 3 | FlashRank 重排序、对话导出、用户偏好 | 2 周 |
 | Phase 4 | 多论文对比、外部检索、BibTeX 导出 | 后续 |
 
