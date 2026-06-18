@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, act, waitFor } from '@testing-library/react'
 
 // ---- Mock pdfjs-dist ----
@@ -21,11 +21,12 @@ vi.mock('../../src/api/client', () => ({
   getPDFUrl: function (id) { return `/api/pdf/${id}` },
 }))
 
-// ---- Pure function mocks (no import references) ----
+// ---- Reusable mock primitives ----
 function MOCK_GET_DOC() {
   return {
-    promise: new Promise(function (rs) {
+    promise: new Promise(function (rs, rj) {
       globalThis.__pdfMockResolve = rs
+      globalThis.__pdfMockReject = rj
     }),
   }
 }
@@ -38,10 +39,15 @@ function createMockTextLayer() {
   return MockTextLayer
 }
 
+let canvasGetContextSpy
+
 function mockCanvas() {
-  HTMLCanvasElement.prototype.getContext = function () {
-    return { save: function () {}, restore: function () {}, scale: function () {} }
+  const ctx = {
+    save: function () {},
+    restore: function () {},
+    scale: function () {},
   }
+  canvasGetContextSpy = vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(ctx)
 }
 
 function makeMockPage(pageNumber) {
@@ -50,6 +56,7 @@ function makeMockPage(pageNumber) {
     getViewport: function () { return { width: 600, height: 800 } },
     render: function () { return { promise: Promise.resolve(), cancel: function () {} } },
     getTextContent: function () { return Promise.resolve({ items: [], styles: {}, lang: 'en' }) },
+    cleanup: function () {},
   }
 }
 
@@ -61,30 +68,44 @@ async function loadComponent() {
   return (await import('../../src/components/PaperViewer/PaperViewer')).default
 }
 
-async function setupLoadedViewer(paperId, numPages, extraProps) {
-  const PaperViewer = await loadComponent()
+/**
+ * Resolve the pending getDocument promise with a mock document.
+ * Must be called inside act().
+ */
+function resolveDoc(numPages) {
   const mockPage = makeMockPage(1)
   const doc = makeMockDoc(numPages || 5)
   doc.getPage.mockResolvedValue(mockPage)
-
-  const result = render(<PaperViewer paperId={paperId} {...(extraProps || {})} />)
-
-  await act(async function () {
-    if (globalThis.__pdfMockResolve) {
-      globalThis.__pdfMockResolve(doc)
-      globalThis.__pdfMockResolve = null
-    }
-    await new Promise(function (r) { setTimeout(r, 10) })
-  })
-
-  return result
+  if (globalThis.__pdfMockResolve) {
+    globalThis.__pdfMockResolve(doc)
+    globalThis.__pdfMockResolve = null
+    globalThis.__pdfMockReject = null
+  }
 }
 
+/**
+ * Reject the pending getDocument promise.
+ * Must be called inside act().
+ */
+function rejectDoc(errorMsg) {
+  if (globalThis.__pdfMockReject) {
+    globalThis.__pdfMockReject(new Error(errorMsg || 'Network error'))
+    globalThis.__pdfMockResolve = null
+    globalThis.__pdfMockReject = null
+  }
+}
+
+// ---- Tests ----
 describe('PaperViewer', () => {
   beforeEach(() => {
     globalThis.__pdfMockResolve = null
+    globalThis.__pdfMockReject = null
     Object.defineProperty(globalThis, 'devicePixelRatio', { value: 1, configurable: true })
     mockCanvas()
+  })
+
+  afterEach(() => {
+    canvasGetContextSpy?.mockRestore()
   })
 
   it('shows loading state initially', async () => {
@@ -94,26 +115,25 @@ describe('PaperViewer', () => {
   })
 
   it('shows error state when PDF loading fails', async () => {
-    const pdfjsMod = await import('pdfjs-dist')
-
-    // Catch rejection immediately to avoid unhandled rejection
-    const rejectPromise = new Promise(function () {}) // never resolves or rejects
-    pdfjsMod.getDocument = function () { return { promise: Promise.reject(new Error('Network error')).catch(function () {}) } }
-
     const PaperViewer = await loadComponent()
+    render(<PaperViewer paperId="bad-paper" />)
 
-    await act(async () => {
-      render(<PaperViewer paperId="bad-paper" />)
+    await act(async function () {
+      rejectDoc('Network error')
       await new Promise(function (r) { setTimeout(r, 10) })
     })
 
     expect(screen.getByText('Failed to load PDF')).toBeDefined()
-
-    pdfjsMod.getDocument = MOCK_GET_DOC
   })
 
   it('transitions to rendering state when document loads', async () => {
-    await setupLoadedViewer('test-paper', 5)
+    const PaperViewer = await loadComponent()
+    render(<PaperViewer paperId="test-paper" />)
+
+    await act(async function () {
+      resolveDoc(5)
+      await new Promise(function (r) { setTimeout(r, 10) })
+    })
 
     await waitFor(() => {
       expect(screen.queryByRole('toolbar')).toBeDefined()
@@ -121,7 +141,13 @@ describe('PaperViewer', () => {
   })
 
   it('renders canvas area and toolbar', async () => {
-    const { container } = await setupLoadedViewer('test-paper', 3)
+    const PaperViewer = await loadComponent()
+    const { container } = render(<PaperViewer paperId="test-paper" />)
+
+    await act(async function () {
+      resolveDoc(3)
+      await new Promise(function (r) { setTimeout(r, 10) })
+    })
 
     await waitFor(() => {
       expect(screen.queryByRole('toolbar')).toBeDefined()
@@ -130,7 +156,13 @@ describe('PaperViewer', () => {
   })
 
   it('renders toolbar with navigation and zoom buttons', async () => {
-    await setupLoadedViewer('test-paper', 5)
+    const PaperViewer = await loadComponent()
+    render(<PaperViewer paperId="test-paper" />)
+
+    await act(async function () {
+      resolveDoc(5)
+      await new Promise(function (r) { setTimeout(r, 10) })
+    })
 
     await waitFor(() => {
       expect(screen.queryByLabelText('Next page')).toBeDefined()
@@ -144,10 +176,36 @@ describe('PaperViewer', () => {
   })
 
   it('renders page indicator with total pages', async () => {
-    await setupLoadedViewer('test-paper', 7)
+    const PaperViewer = await loadComponent()
+    render(<PaperViewer paperId="test-paper" />)
+
+    await act(async function () {
+      resolveDoc(7)
+      await new Promise(function (r) { setTimeout(r, 10) })
+    })
 
     await waitFor(() => {
       expect(screen.getByText('/ 7')).toBeDefined()
     })
+  })
+
+  it('shows 100% label on zoom reset button', async () => {
+    const PaperViewer = await loadComponent()
+    render(<PaperViewer paperId="test-paper" />)
+
+    await act(async function () {
+      resolveDoc(3)
+      await new Promise(function (r) { setTimeout(r, 10) })
+    })
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Reset zoom')).toBeDefined()
+    })
+
+    // The label text should be 100%
+    expect(screen.getByLabelText('Reset zoom').textContent).toBe('100%')
+
+    // Scale indicator should show default zoom (150%)
+    expect(screen.getByText(/150%/)).toBeDefined()
   })
 })

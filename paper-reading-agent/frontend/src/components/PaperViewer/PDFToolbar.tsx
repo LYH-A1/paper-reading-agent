@@ -117,7 +117,7 @@ export default function PDFToolbar({
         onClick={onZoomReset}
         aria-label="Reset zoom"
       >
-        1:1
+        100%
       </button>
     </div>
   )

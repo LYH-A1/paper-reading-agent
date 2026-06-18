@@ -5,15 +5,22 @@ import { getPDFUrl } from '@/api/client'
 import PDFCanvas from './PDFCanvas'
 import PDFTextLayer from './PDFTextLayer'
 import PDFToolbar from './PDFToolbar'
+import type { HighlightRect } from './PDFTextLayer'
 import styles from './PaperViewer.module.css'
 
 // ---- Worker ----
 const PDF_WORKER_SRC = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`
 pdfjsLib.GlobalWorkerOptions.workerSrc = PDF_WORKER_SRC
 
+export type { HighlightRect }
+
 export interface PaperViewerProps {
   paperId: string
-  highlights?: Array<[number, number, number, number, number]>
+  highlights?: HighlightRect[]
+  /**
+   * Called when the user clicks on a highlighted span in the text layer.
+   */
+  onHighlightClick?: (box: HighlightRect) => void
   /**
    * Called when the viewer has finished loading and rendering the initial page.
    */
@@ -34,7 +41,7 @@ export type ViewerStatus = 'loading' | 'ready' | 'error' | 'empty'
  * - Provides toolbar navigation (page up/down, zoom in/out/reset)
  * - Supports highlights via the text layer
  */
-export default function PaperViewer({ paperId, highlights, onReady, onPageChange }: PaperViewerProps) {
+export default function PaperViewer({ paperId, highlights, onHighlightClick, onReady, onPageChange }: PaperViewerProps) {
   const [doc, setDoc] = useState<PDFDocumentProxy | null>(null)
   const [status, setStatus] = useState<ViewerStatus>('loading')
   const [errorMessage, setErrorMessage] = useState<string>('')
@@ -113,7 +120,7 @@ export default function PaperViewer({ paperId, highlights, onReady, onPageChange
   }, [])
 
   const zoomReset = useCallback(() => {
-    setScale(1.5)
+    setScale(1.0)
   }, [])
 
   // ---- Page navigation ----
@@ -169,6 +176,7 @@ export default function PaperViewer({ paperId, highlights, onReady, onPageChange
             doc={doc}
             scale={scale}
             highlights={highlights}
+            onHighlightClick={onHighlightClick}
             onRenderComplete={() => setCanvasReady(true)}
           />
         </div>
@@ -182,11 +190,12 @@ interface PageRendererProps {
   pageNumber: number
   doc: PDFDocumentProxy
   scale: number
-  highlights?: Array<[number, number, number, number, number]>
+  highlights?: HighlightRect[]
+  onHighlightClick?: (box: HighlightRect) => void
   onRenderComplete: () => void
 }
 
-function PageRenderer({ pageNumber, doc, scale, highlights, onRenderComplete }: PageRendererProps) {
+function PageRenderer({ pageNumber, doc, scale, highlights, onHighlightClick, onRenderComplete }: PageRendererProps) {
   const [pageProxy, setPageProxy] = useState<pdfjsLib.PDFPageProxy | null>(null)
   const renderCompleteRef = useRef(false)
 
@@ -225,8 +234,14 @@ function PageRenderer({ pageNumber, doc, scale, highlights, onRenderComplete }: 
 
   return (
     <>
-      <PDFCanvas page={pageProxy} scale={scale} onRenderComplete={handleRenderComplete} />
-      <PDFTextLayer page={pageProxy} scale={scale} highlights={highlights} />
+      <PDFCanvas pdfDoc={doc} pageNumber={pageNumber} scale={scale} onRenderComplete={handleRenderComplete} />
+      <PDFTextLayer
+        pdfDoc={doc}
+        pageNumber={pageNumber}
+        scale={scale}
+        highlights={highlights}
+        onHighlightClick={onHighlightClick}
+      />
     </>
   )
 }

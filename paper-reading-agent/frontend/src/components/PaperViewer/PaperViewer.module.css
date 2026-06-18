@@ -124,20 +124,20 @@
 .textLayer .highlight {
   margin: -1px;
   padding: 1px;
-  background-color: rgb(180, 0, 170);
+  background-color: rgba(255, 230, 0, 0.35);
   border-radius: 4px;
 }
 
 .textLayer .highlight.selected {
-  background-color: rgb(0, 100, 0);
+  background-color: rgba(0, 100, 0, 0.35);
 }
 
 .textLayer .highlight:hover {
-  background-color: rgba(180, 0, 170, 0.5);
+  background-color: rgba(255, 230, 0, 0.55);
 }
 
 .textLayer .highlight.selected:hover {
-  background-color: rgba(0, 100, 0, 0.5);
+  background-color: rgba(0, 100, 0, 0.55);
 }
 
 /* ---- Loading / Error / Empty states ---- */
