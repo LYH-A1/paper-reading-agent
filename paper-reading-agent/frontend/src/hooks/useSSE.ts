@@ -19,6 +19,9 @@ export function useSSE() {
     es.addEventListener('init', (e: MessageEvent) => {
       const data = JSON.parse(e.data)
       store.getState().setThreadId(data.thread_id)
+      if (data.session_id) {
+        store.getState().setSessionId(data.session_id)
+      }
     })
 
     es.addEventListener('node', (e: MessageEvent) => {

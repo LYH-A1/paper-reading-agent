@@ -48,6 +48,7 @@ export interface Plan {
 export interface InitEvent {
   event: 'init'
   thread_id: string
+  session_id: string
 }
 
 export interface NodeEvent {

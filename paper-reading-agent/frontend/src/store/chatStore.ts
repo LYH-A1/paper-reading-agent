@@ -16,6 +16,7 @@ interface ChatState {
   currentStep: string | null
   hitlPlan: Plan | null
   threadId: string | null
+  currentSessionId: string | null
   status: ChatStatus
   errorMessage: string | null
 
@@ -24,6 +25,7 @@ interface ChatState {
   setCurrentStep: (step: string) => void
   setHitlPlan: (plan: Plan | null) => void
   setThreadId: (id: string) => void
+  setSessionId: (id: string) => void
   setStatus: (status: ChatStatus) => void
   setError: (msg: string) => void
   addMessage: (msg: Message) => void
@@ -41,6 +43,7 @@ export const useChatStore = create<ChatState>((set) => ({
   currentStep: null,
   hitlPlan: null,
   threadId: null,
+  currentSessionId: null,
   status: 'idle',
   errorMessage: null,
 
@@ -56,6 +59,8 @@ export const useChatStore = create<ChatState>((set) => ({
   setHitlPlan: (plan) => set({ hitlPlan: plan, status: plan ? 'awaiting_approval' : 'streaming' }),
 
   setThreadId: (id) => set({ threadId: id }),
+
+  setSessionId: (id) => set({ currentSessionId: id }),
 
   setStatus: (status) => set({ status }),
 
@@ -86,6 +91,7 @@ export const useChatStore = create<ChatState>((set) => ({
     currentStep: null,
     hitlPlan: null,
     threadId: null,
+    currentSessionId: null,
     status: 'idle',
     errorMessage: null,
   }),
