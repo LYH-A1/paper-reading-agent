@@ -1,6 +1,6 @@
 # 论文阅读 Agent V2 工作进度报告
 
-> 日期：2026-06-18 | 状态：Phase 1 ✅ Phase 2 ✅，Web 服务就绪，React 前端就绪
+> 日期：2026-06-19 | 状态：Phase 1 ✅ Phase 2 ✅ Phase 3 ✅，全部功能就绪
 
 ---
 
@@ -13,12 +13,16 @@
 | `2026-06-17-paper-reading-agent-design.md` | V1 废案（11 文件 Streamlit 方案），保留作为设计演进参考 |
 | **`2026-06-17-paper-reading-agent-v2-design.md`** | **V2 正式设计文档**（12 章）：数据模型、LangGraph 编排、R0/R1/R2 证据系统、混合 RAG、React 前端、错误处理、4 阶段规划 |
 | `2026-06-17-paper-reading-agent-v2-conversation.md` | 设计对话记录：Brainstorming 逐段确认过程，包含用户决策、设计修正、调研发现 |
+| **`2026-06-18-paper-reading-agent-v2-phase2-design.md`** | **Phase 2 设计文档**（10 章）：组件架构、SSE 协议、HITL、证据系统、布局 |
+| **`2026-06-18-paper-reading-agent-v2-phase3-design.md`** | **Phase 3 设计文档**（7 章）：FlashRank、对话导出、用户偏好 |
 
 ### 实现计划 (docs/superpowers/plans/)
 
 | 文件 | 说明 |
 |------|------|
-| **`2026-06-17-paper-reading-agent-v2-plan.md`** | **实现计划**：14 个 Task × 逐步指令，含完整代码、测试用例、commit 信息 |
+| **`2026-06-17-paper-reading-agent-v2-plan.md`** | **Phase 1 实现计划**：14 个 Task × 逐步指令，含完整代码、测试用例、commit 信息 |
+| **`2026-06-18-paper-reading-agent-v2-phase2-plan.md`** | **Phase 2 实现计划**：11 个 Task × 逐步指令，React 前端 + PDF.js + SSE |
+| **`2026-06-18-paper-reading-agent-v2-phase3-plan.md`** | **Phase 3 实现计划**：8 个 Task × 逐步指令，FlashRank + 导出 + 偏好 |
 
 ### SDD 报告 (paper-reading-agent/.sdd-reports/)
 
@@ -80,6 +84,40 @@ DeepSeek API 适配问题修复：
 | generate 无限循环 | observe 上限 3 次 |
 | `chat_stream()` 连接不稳定 | 降级为 `chat()` |
 
+### 阶段 2：前端 + SSE + HITL（Phase 2，6 小时）
+
+采用 Subagent-Driven Development 模式。15 commits，75 测试。
+
+| Task | 内容 | 文件数 | 测试 | 状态 |
+|------|------|--------|------|------|
+| 1 | 项目脚手架 + 类型系统 | 9 | 1/1 | ✅ |
+| 2 | API 客户端 | 1 | 2/2 | ✅ |
+| 3 | useSSE Hook | 1 | 7/7 | ✅ |
+| 4 | PaperViewer (PDF.js) | 5 | 7/7 | ✅ |
+| 5 | ChatPanel (StepIndicator/MessageList/ChatInput) | 7 | 2/2 | ✅ |
+| 6 | Evidence 系统 (Badge/Popover/Chain) | 4 | 3/3 | ✅ |
+| 7 | HITL (PlanApprovalBanner/useApproval) | 3 | 10/10 | ✅ |
+| 8 | 布局 (TopBar/Sidebar/ResizableSplit) | 9 | — | ✅ |
+| 9 | 后端适配 (SSE/HITL/PDF 端点) | 2 | — | ✅ |
+| 10 | 上传流程 + App 集成 | 3 | 8/8 | ✅ |
+
+### 阶段 3：重排序 + 导出 + 偏好（Phase 3，3 小时）
+
+采用 Subagent-Driven Development 模式。9 commits（8 tasks + 1 code review fix），97 测试。
+
+| Task | 内容 | 文件数 | 测试 | 状态 |
+|------|------|--------|------|------|
+| 1 | Reranker 模块 (FlashRank + BM25) | 2 | 8/8 | ✅ |
+| 2 | 集成到 HybridRetriever | 2 | 1/1 | ✅ |
+| 3 | SSE 协议更新 (init/done/session) | 4 | 2/2 | ✅ |
+| 4 | 导出 API (Markdown/JSON) | 3 | 3/3 | ✅ |
+| 5 | 前端导出按钮 + currentSessionId | 6 | 2/2 | ✅ |
+| 6 | 偏好 API (GET/PUT) | 2 | 5/5 | ✅ |
+| 7 | zustand persist | 2 | 1/1 | ✅ |
+| 8 | Settings 面板 | 4 | — | ✅ |
+
+**代码审查发现**：8 个发现，3 个 bug（1 🔴 + 1 🟡 + 1 🟢），全部已修复。
+
 ---
 
 ## 三、当前状态
@@ -87,8 +125,11 @@ DeepSeek API 适配问题修复：
 ### 可用功能
 
 - **CLI**：`python -m backend --paper <pdf> --query "<问题>"`
-- **Web**：`http://localhost:8000`（上传 PDF + 对话 + R0/R1/R2 徽标）
-- **API**：`POST /api/upload`、`POST /api/query`（SSE）、`GET /api/papers`
+- **Web**：`http://localhost:8000`（上传 PDF + 对话 + 双栏 PDF 查看 + R0/R1/R2 证据高亮 + HITL 审批）
+- **API**：`POST /api/upload`、`GET /api/query`（SSE）、`POST /api/approve`、`GET /api/papers`、`GET /api/pdf/{id}`、`GET /api/pdf/{id}/text`、`GET /api/sessions/{id}/export`、`GET/PUT /api/preferences`
+- **Agent**：FlashRank 重排序（可配置）+ BM25 降级
+- **导出**：Markdown / JSON 对话导出
+- **偏好**：UI 布局持久化 + Agent 参数配置
 
 ### 全链路验证结果
 
@@ -175,22 +216,46 @@ DeepSeek API 适配问题修复：
 | **StepIndicator** | Show Your Work 步骤条，实时节点状态（✓完成 / ◌进行中 / ○等待） |
 | **后端新端点** | `GET /api/query` SSE, `POST /api/approve`, `GET /api/pdf/{id}`, `GET /api/pdf/{id}/text` |
 
-### 已知问题
+### 已知问题（已修复）
 
 | 问题 | 严重度 | 状态 |
 |------|--------|------|
-| TypeScript 严格空检查警告（canvas refs） | 低 | React ref 固有，不影响运行 |
-| `pdfjs-dist` 类型导出不匹配 | 低 | 库版本差异，mock 测试不受影响 |
-| R2 推理链高亮首屏竞态 | 低 | 需二次渲染触发 |
-| LayoutToggle 按钮缺少 aria-label | 低 | 可访问性改进项 |
+| TypeScript 严格空检查警告（canvas refs） | 低 | ✅ 已修复 (ef8323c) |
+| `pdfjs-dist` 类型导出不匹配 | 低 | ✅ 已修复 (ef8323c) |
+| R2 推理链高亮首屏竞态 | 低 | ✅ 已修复 (ef8323c) |
+| LayoutToggle 按钮缺少 aria-label | 低 | ✅ 已修复 (ef8323c) |
+| session_id/thread_id 碰撞 (Segment 2) | 🔴 严重 | ✅ 已修复 (bba480f) |
+| RerankerLoadError 死代码 | 🟡 重要 | ✅ 已修复 (bba480f) |
+| null confidence 导出崩溃 | 🟢 次要 | ✅ 已修复 (bba480f) |
 
 ---
 
-## 六、下一步
+## 六、Phase 3 完成
+
+> 日期：2026-06-19 | 状态：✅ Phase 3 完成
+
+### Phase 3 产出
+
+| 维度 | 内容 |
+|------|------|
+| **FlashRank 重排序** | 新建 `backend/tools/reranker.py`（Reranker 接口 + FlashRankReranker 懒加载 + BM25FallbackReranker + 工厂函数），集成到 `HybridRetriever` |
+| **对话导出** | `GET /api/sessions/{id}/export?format=md|json`，Markdown 含 evidence/quality/followups，JSON 含完整结构化数据，ChatPanel 导出按钮 |
+| **用户偏好** | zustand persist（UI 状态持久化）+ `GET/PUT /api/preferences`（Agent 偏好：reranker/top_k/language/embedding_model），Sidebar Settings 面板 |
+| **SSE 协议增强** | init 事件增加 `session_id`，done 事件扩展 quality_score(4 字段)+followup_questions+完整 evidence_list，消息自动记录到 SQLite |
+| **测试** | 97 全部通过（54 后端 + 43 前端） |
+| **Commits** | 9 commits（8 tasks + 1 code review fix） |
+
+### Phase 3 设计文档 (docs/superpowers/)
+
+| 文件 | 说明 |
+|------|------|
+| **`specs/2026-06-18-paper-reading-agent-v2-phase3-design.md`** | Phase 3 正式设计文档：FlashRank、导出、偏好 |
+| **`plans/2026-06-18-paper-reading-agent-v2-phase3-plan.md`** | Phase 3 实现计划：8 个 Task × 逐步指令 |
+
+---
+
+## 七、下一步
 
 | 阶段 | 内容 | 预估 |
 |------|------|------|
-| Phase 3 | FlashRank 重排序、对话导出、用户偏好 | 2 周 |
-| Phase 4 | 多论文对比、外部检索、BibTeX 导出 | 后续 |
-
-**Phase 2 启动条件**：安装 Node.js + npm，在 `frontend/` 下创建 Vite + React + TypeScript 项目。
+| Phase 4 | 多论文对比、外部检索 (arXiv API)、BibTeX 导出、FlashRank 重排序可视化 | 后续 |
