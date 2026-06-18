@@ -1,6 +1,7 @@
 """Supervisor: build graph, stream events, HITL support."""
 
 import json
+import uuid
 import aiosqlite
 from pathlib import Path
 from typing import AsyncGenerator
@@ -16,12 +17,14 @@ from backend.agents.reviewer import reviewer_node, rewrite_node, decide_loop, ou
 from backend.config import config
 
 
-def should_interrupt(state: AgentState) -> bool:
-    """Return True if the graph should HITL-interrupt after planning.
-
+def should_interrupt(state: AgentState) -> list[str]:
+    """Return a list of node names to interrupt after.
     Only interrupts for compare/recommend intents; summary and qa pass through.
+    Returns ["planner"] to interrupt after planner, or [] to continue.
     """
-    return state.intent in ("compare", "recommend")
+    if state.intent in ("compare", "recommend"):
+        return ["planner"]
+    return []
 
 
 async def build_graph() -> StateGraph:
@@ -113,11 +116,10 @@ async def stream_graph(
         paper=Paper(file_path=str(Path(paper_path).resolve())),
         user_query=query,
     )
-    tid = thread_id or initial_state.paper.file_path
+    tid = thread_id or str(uuid.uuid4())
     config_dict = {"configurable": {"thread_id": tid}}
 
     # ----- Segment 1: first pass (reader → classify → planner) -----
-    first_pass = True
     async for event in graph.astream_events(
         initial_state,
         config_dict,
@@ -132,6 +134,12 @@ async def stream_graph(
             "reader", "classify", "planner",
         ):
             yield f"event: node\ndata: {json.dumps({'event': 'node', 'node': node_name})}\n\n"
+
+        # Intercept token-level streaming for chat model output
+        if kind == "on_chat_model_stream":
+            token_text = _extract_token_text(data)
+            if token_text:
+                yield f"event: token\ndata: {json.dumps({'event': 'token', 'token': token_text})}\n\n"
 
         # After planner completes, check if we should HITL
         if kind == "on_chain_end" and node_name == "planner":
@@ -157,9 +165,9 @@ async def stream_graph(
                 )
                 return  # Stop Segment 1 — wait for approval
 
-        # Pass through other events in first pass
-        yield _serialize_event(kind, node_name, data)
-        first_pass = False
+        # Pass through other events in first pass (skip raw chat model stream)
+        if kind != "on_chat_model_stream":
+            yield _serialize_event(kind, node_name, data)
 
     # ----- Segment 2: resume after approval (retrieve → generate → …) -----
     async for event in graph.astream_events(
@@ -176,6 +184,12 @@ async def stream_graph(
         ):
             yield f"event: node\ndata: {json.dumps({'event': 'node', 'node': node_name})}\n\n"
 
+        # Intercept token-level streaming for chat model output
+        if kind == "on_chat_model_stream":
+            token_text = _extract_token_text(data)
+            if token_text:
+                yield f"event: token\ndata: {json.dumps({'event': 'token', 'token': token_text})}\n\n"
+
         if kind == "on_chain_end" and node_name == "output":
             output = data.get("output", {})
             if isinstance(output, dict):
@@ -185,7 +199,28 @@ async def stream_graph(
             yield _build_done_payload(state)
             return
 
-        yield _serialize_event(kind, node_name, data)
+        # Skip raw chat model stream events (already handled as tokens above)
+        if kind != "on_chat_model_stream":
+            yield _serialize_event(kind, node_name, data)
+
+
+def _extract_token_text(data: dict) -> str:
+    """Extract token text from an on_chat_model_stream event data dict."""
+    try:
+        chunk = data.get("chunk", data)
+        # LangChain AI message chunk: chunk.content may be a string or list
+        content = chunk.get("content", "")
+        if isinstance(content, list):
+            parts = []
+            for c in content:
+                if isinstance(c, dict):
+                    parts.append(c.get("text", ""))
+                else:
+                    parts.append(str(c))
+            return "".join(parts)
+        return content or ""
+    except Exception:
+        return ""
 
 
 def _serialize_event(kind: str, node_name: str, data: dict) -> str:

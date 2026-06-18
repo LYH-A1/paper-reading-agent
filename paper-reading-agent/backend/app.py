@@ -4,7 +4,7 @@ import json
 import asyncio
 from pathlib import Path
 from fastapi import FastAPI, UploadFile, File, Form, Request, Query
-from fastapi.responses import StreamingResponse, HTMLResponse, JSONResponse
+from fastapi.responses import StreamingResponse, HTMLResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from backend.agents.supervisor import stream_graph, run_agent
@@ -108,64 +108,59 @@ async def list_papers():
 
 
 @app.get("/api/pdf/{paper_id}")
-async def get_paper_metadata(paper_id: str):
-    """Return paper metadata (title, abstract, authors, sections)."""
+async def get_pdf(paper_id: str):
+    """Serve PDF binary for PDF.js rendering."""
     store = PaperStore()
     paper = await store.get_paper(paper_id)
-    if not paper:
-        return JSONResponse({"error": "Paper not found"}, status_code=404)
-
-    return {
-        "paper_id": paper.paper_id,
-        "title": paper.title,
-        "authors": paper.authors,
-        "abstract": paper.abstract,
-        "sections": [
-            {
-                "heading": s.heading,
-                "page_start": s.page_start,
-                "page_end": s.page_end,
-            }
-            for s in paper.sections
-        ],
-    }
+    if not paper or not Path(paper.file_path).exists():
+        return JSONResponse({"error": "PDF not found"}, status_code=404)
+    return FileResponse(paper.file_path, media_type="application/pdf")
 
 
 @app.get("/api/pdf/{paper_id}/text")
 async def get_pdf_text(paper_id: str):
-    """Extract text blocks with bounding boxes from the PDF using PyMuPDF.
-
-    Returns a list of blocks, each with:
-      - page (int): 1-indexed page number
-      - text (str)
-      - bbox (list[float]): [x0, y0, x1, y1]
-    """
+    """Return text layer data (pages with sentences and bbox) for PDF highlight overlay."""
+    import fitz  # PyMuPDF
     store = PaperStore()
     paper = await store.get_paper(paper_id)
-    if not paper:
-        return JSONResponse({"error": "Paper not found"}, status_code=404)
+    if not paper or not Path(paper.file_path).exists():
+        return JSONResponse({"error": "PDF not found"}, status_code=404)
 
-    pdf_path = Path(paper.file_path)
-    if not pdf_path.exists():
-        return JSONResponse({"error": f"PDF file not found: {pdf_path}"}, status_code=404)
-
-    try:
-        import fitz  # PyMuPDF — lazy import
-    except ImportError:
-        return JSONResponse({"error": "PyMuPDF (fitz) not installed"}, status_code=500)
-
-    doc = fitz.open(str(pdf_path))
-    blocks = []
-    for page_num, page in enumerate(doc):
-        page_blocks = page.get_text("blocks")
-        for b in page_blocks:
-            # block structure: (x0, y0, x1, y1, text, block_no, block_type)
-            if len(b) >= 5 and b[4].strip():
-                blocks.append({
-                    "page": page_num + 1,
-                    "text": b[4].strip()[:500],  # truncate long blocks
-                    "bbox": list(b[:4]),
-                })
+    doc = fitz.open(paper.file_path)
+    pages = []
+    for page_idx in range(min(len(doc), 30)):  # Cap at 30 pages
+        page = doc[page_idx]
+        rect = page.rect
+        # Get text blocks with positions
+        blocks = page.get_text("dict")["blocks"]
+        sentences = []
+        for block in blocks:
+            if block.get("type") != 0:  # text block
+                continue
+            for line in block.get("lines", []):
+                text_parts = []
+                bbox = None
+                for span in line.get("spans", []):
+                    text_parts.append(span["text"])
+                    if bbox is None:
+                        bbox = list(span["bbox"])
+                    else:
+                        # Expand bbox
+                        bbox[2] = max(bbox[2], span["bbox"][2])
+                        bbox[3] = max(bbox[3], span["bbox"][3])
+                full_text = " ".join(text_parts).strip()
+                if full_text and bbox:
+                    sentences.append({
+                        "text": full_text,
+                        "char_start": 0,
+                        "char_end": len(full_text),
+                        "bbox": bbox,
+                    })
+        pages.append({
+            "page": page_idx + 1,
+            "width": rect.width,
+            "height": rect.height,
+            "sentences": sentences,
+        })
     doc.close()
-
-    return {"paper_id": paper_id, "blocks": blocks}
+    return {"pages": pages}
