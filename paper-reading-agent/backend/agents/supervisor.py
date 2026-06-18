@@ -69,11 +69,11 @@ async def build_graph() -> StateGraph:
     )
 
 
-async def run_agent(paper_path: str, query: str) -> AgentState:
+async def run_agent(paper_id: str, query: str) -> AgentState:
     """Run complete agent pipeline. Returns final AgentState."""
     graph = await build_graph()
     initial_state = AgentState(
-        paper=Paper(file_path=str(Path(paper_path).resolve())),
+        paper=Paper(file_path=str(Path(paper_id).resolve())),
         user_query=query
     )
     config_dict = {"configurable": {"thread_id": initial_state.paper.file_path}}
@@ -90,14 +90,14 @@ async def run_agent(paper_path: str, query: str) -> AgentState:
     return state
 
 
-def run_agent_sync(paper_path: str, query: str) -> AgentState:
+def run_agent_sync(paper_id: str, query: str) -> AgentState:
     """Synchronous wrapper for CLI usage."""
     import asyncio
-    return asyncio.run(run_agent(paper_path, query))
+    return asyncio.run(run_agent(paper_id, query))
 
 
 async def stream_graph(
-    paper_path: str,
+    paper_id: str,
     query: str,
     thread_id: str | None = None,
 ) -> AsyncGenerator[str, None]:
@@ -113,7 +113,7 @@ async def stream_graph(
     """
     graph = await build_graph()
     initial_state = AgentState(
-        paper=Paper(file_path=str(Path(paper_path).resolve())),
+        paper=Paper(file_path=str(Path(paper_id).resolve())),
         user_query=query,
     )
     tid = thread_id or str(uuid.uuid4())
@@ -154,7 +154,7 @@ async def stream_graph(
 
             if state_plan is not None and should_interrupt(
                 AgentState(
-                    paper=Paper(file_path=str(Path(paper_path).resolve())),
+                    paper=Paper(file_path=str(Path(paper_id).resolve())),
                     user_query=query,
                     intent=state_intent or "",
                 )

@@ -47,24 +47,24 @@ async def upload_paper(file: UploadFile = File(...)):
 
 @app.get("/api/query")
 async def query_paper(
-    paper_path: str = Query(..., description="Path to the PDF file"),
-    query: str = Query(..., description="Question about the paper"),
-    thread_id: str = Query(None, description="Thread ID for resume (Segment 2)"),
+    paper_id: str = Query(default="", description="Paper ID for new queries (Segment 1)"),
+    query: str = Query(default="", description="Question about the paper"),
+    thread_id: str = Query(default="", description="Thread ID for resume (Segment 2)"),
 ):
     """SSE streaming endpoint for agent queries.
 
     Two-segment protocol:
-      Segment 1 (no thread_id):
+      Segment 1 (paper_id + query):
         Runs reader -> classify -> planner.
         If intent is compare/recommend, stops with ``event: hitl``.
         Otherwise, runs through to completion.
 
-      Segment 2 (with thread_id):
+      Segment 2 (thread_id):
         Resumes after approval, runs retrieve -> generate -> ... -> done.
     """
     async def event_stream():
         try:
-            async for sse_str in stream_graph(paper_path, query, thread_id=thread_id):
+            async for sse_str in stream_graph(paper_id, query, thread_id=thread_id or None):
                 yield sse_str
         except Exception as e:
             yield f"event: error\ndata: {json.dumps({'event': 'error', 'message': str(e)})}\n\n"
