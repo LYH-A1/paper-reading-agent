@@ -122,9 +122,6 @@ export default function PaperViewer({ paperId, highlights, onReady, onPageChange
     setCanvasReady(false)
   }, [])
 
-  // ---- Get current page proxy ----
-  const currentPageProxy = doc ? doc.getPage(pageNumber) : null
-
   // ---- Render ----
   if (status === 'loading') {
     return (
