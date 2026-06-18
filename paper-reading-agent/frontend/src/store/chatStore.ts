@@ -1,0 +1,92 @@
+import { create } from 'zustand'
+import type { Message, Plan, Evidence, QualityScore } from '@/types'
+
+export type ChatStatus =
+  | 'idle'
+  | 'connecting'
+  | 'streaming'
+  | 'awaiting_approval'
+  | 'complete'
+  | 'error'
+
+interface ChatState {
+  messages: Message[]
+  streamingTokens: string
+  stepNodes: string[]
+  currentStep: string | null
+  hitlPlan: Plan | null
+  threadId: string | null
+  status: ChatStatus
+  errorMessage: string | null
+
+  appendToken: (token: string) => void
+  addStepNode: (node: string) => void
+  setCurrentStep: (step: string) => void
+  setHitlPlan: (plan: Plan) => void
+  setThreadId: (id: string) => void
+  setStatus: (status: ChatStatus) => void
+  setError: (msg: string) => void
+  addMessage: (msg: Message) => void
+  finalizeAssistantMessage: (content: string, evidenceList: Evidence[], qualityScore: QualityScore | null, trace: string[]) => void
+  reset: () => void
+}
+
+let nextId = 1
+const genId = () => `msg-${nextId++}`
+
+export const useChatStore = create<ChatState>((set) => ({
+  messages: [],
+  streamingTokens: '',
+  stepNodes: [],
+  currentStep: null,
+  hitlPlan: null,
+  threadId: null,
+  status: 'idle',
+  errorMessage: null,
+
+  appendToken: (token) => set((s) => ({ streamingTokens: s.streamingTokens + token })),
+
+  addStepNode: (node) => set((s) => ({
+    stepNodes: [...s.stepNodes, node],
+    currentStep: node,
+  })),
+
+  setCurrentStep: (step) => set({ currentStep: step }),
+
+  setHitlPlan: (plan) => set({ hitlPlan: plan, status: 'awaiting_approval' }),
+
+  setThreadId: (id) => set({ threadId: id }),
+
+  setStatus: (status) => set({ status }),
+
+  setError: (msg) => set({ errorMessage: msg, status: 'error' }),
+
+  addMessage: (msg) => set((s) => ({ messages: [...s.messages, msg] })),
+
+  finalizeAssistantMessage: (content, evidenceList, qualityScore, trace) => set((s) => {
+    const msg: Message = {
+      id: genId(),
+      role: 'assistant',
+      content,
+      evidenceList,
+      qualityScore,
+      trace,
+    }
+    return {
+      messages: [...s.messages, msg],
+      streamingTokens: '',
+      status: 'complete',
+    }
+  }),
+
+  reset: () => set({
+    messages: [],
+    streamingTokens: '',
+    stepNodes: [],
+    currentStep: null,
+    hitlPlan: null,
+    threadId: null,
+    status: 'idle',
+    errorMessage: null,
+  }),
+}))

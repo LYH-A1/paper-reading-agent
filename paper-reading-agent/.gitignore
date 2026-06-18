@@ -4,3 +4,5 @@ __pycache__/
 *.db
 outputs/api_log.jsonl
 .env
+node_modules/
+.npm-cache/
