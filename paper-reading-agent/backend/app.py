@@ -14,6 +14,7 @@ from backend.models.paper import Paper
 from backend.storage.paper_store import PaperStore
 from backend.storage.session_store import SessionStore
 from backend.config import config
+from backend.storage.database import db
 
 app = FastAPI(title="Paper Reading Agent")
 
@@ -28,6 +29,89 @@ async def index():
     if html_path.exists():
         return HTMLResponse(html_path.read_text(encoding="utf-8"))
     return HTMLResponse("<h1>Paper Reading Agent</h1>")
+
+
+# ---- Preferences ----
+
+PREFERENCE_WHITELIST = {
+    "reranker":    {"default": "flashrank", "type": str, "values": {"flashrank", "bm25"}},
+    "top_k":       {"default": "5",         "type": int,  "min": 1, "max": 20},
+    "language":    {"default": "auto",      "type": str,  "values": {"en", "zh", "auto"}},
+    "embedding_model": {"default": "auto",  "type": str},
+}
+
+
+def _coerce_preference(key: str, raw_value: str):
+    """Convert stored string to native type based on whitelist."""
+    spec = PREFERENCE_WHITELIST[key]
+    if spec["type"] == int:
+        return int(raw_value)
+    return raw_value
+
+
+PREFERENCE_DEFAULTS = {k: _coerce_preference(k, v["default"]) for k, v in PREFERENCE_WHITELIST.items()}
+
+
+def _validate_preference(key: str, value) -> str | None:
+    """Validate a preference value. Returns error message or None."""
+    spec = PREFERENCE_WHITELIST.get(key)
+    if spec is None:
+        return f"Unknown preference key: {key}"
+
+    if spec["type"] == int:
+        try:
+            int_val = int(value)
+        except (ValueError, TypeError):
+            return f"{key} must be an integer"
+        if "min" in spec and int_val < spec["min"]:
+            return f"{key} must be >= {spec['min']}"
+        if "max" in spec and int_val > spec["max"]:
+            return f"{key} must be <= {spec['max']}"
+    else:
+        str_val = str(value)
+        if "values" in spec and str_val not in spec["values"]:
+            allowed = ", ".join(spec["values"])
+            return f"{key} must be one of: {allowed}"
+
+    return None
+
+
+@app.get("/api/preferences")
+async def get_preferences():
+    """Get all agent preferences with defaults for unset keys."""
+    conn = await db.get_db()
+    try:
+        result = dict(PREFERENCE_DEFAULTS)
+        async with conn.execute("SELECT key, value FROM preferences") as cursor:
+            async for row in cursor:
+                if row["key"] in PREFERENCE_WHITELIST:
+                    result[row["key"]] = _coerce_preference(row["key"], row["value"])
+        return result
+    finally:
+        await conn.close()
+
+
+@app.put("/api/preferences")
+async def put_preferences(request: Request):
+    """Update agent preferences. Only whitelisted keys accepted."""
+    body = await request.json()
+
+    for key, value in body.items():
+        error = _validate_preference(key, value)
+        if error:
+            return JSONResponse({"error": error}, status_code=400)
+
+    conn = await db.get_db()
+    try:
+        for key, value in body.items():
+            await conn.execute(
+                "INSERT OR REPLACE INTO preferences (key, value) VALUES (?, ?)",
+                (key, str(value)),
+            )
+        await conn.commit()
+        return {"status": "ok"}
+    finally:
+        await conn.close()
 
 
 @app.post("/api/upload")
