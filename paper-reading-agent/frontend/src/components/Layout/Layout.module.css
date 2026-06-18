@@ -31,3 +31,63 @@
 .followUp h4 { font-size: 0.8rem; color: #6b7280; width: 100%; margin-bottom: 2px; }
 .followUp button { padding: 4px 10px; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 16px; cursor: pointer; font-size: 0.8rem; }
 .followUp button:hover { background: #e0e7ff; }
+
+.settingsPanel {
+  margin-top: 16px;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 12px;
+}
+
+.settingsToggle {
+  background: none;
+  border: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #555;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.settingsForm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.settingsForm label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.settingsForm select,
+.settingsForm input {
+  padding: 4px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.settingsSaveBtn {
+  padding: 4px 12px;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  margin-top: 4px;
+}
+
+.settingsSaveBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.settingsMsg {
+  font-size: 0.75rem;
+  color: #059669;
+}

@@ -1,6 +1,7 @@
 import { useAppStore } from '@/store/appStore'
 import LibraryPanel from './LibraryPanel'
 import SessionHistory from './SessionHistory'
+import SettingsPanel from './SettingsPanel'
 import styles from './Layout.module.css'
 
 export default function Sidebar() {
@@ -15,6 +16,7 @@ export default function Sidebar() {
         <button className={styles.closeBtn} onClick={toggleSidebar}>×</button>
         <LibraryPanel />
         <SessionHistory />
+        <SettingsPanel />
       </div>
     </div>
   )

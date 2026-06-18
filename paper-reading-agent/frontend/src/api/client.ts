@@ -44,3 +44,29 @@ export function getSSEUrl(params: { paper_id?: string; query?: string; thread_id
   if (params.thread_id) sp.set('thread_id', params.thread_id)
   return `${BASE}/query?${sp.toString()}`
 }
+
+export interface Preferences {
+  reranker: string
+  top_k: number
+  language: string
+  embedding_model: string
+}
+
+export async function getPreferences(): Promise<Preferences> {
+  const res = await fetch(`${BASE}/preferences`)
+  if (!res.ok) throw new Error('Failed to fetch preferences')
+  return res.json()
+}
+
+export async function putPreferences(prefs: Partial<Preferences>): Promise<{ status: string }> {
+  const res = await fetch(`${BASE}/preferences`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(prefs),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Update failed' }))
+    throw new Error(err.error || 'Failed to update preferences')
+  }
+  return res.json()
+}
