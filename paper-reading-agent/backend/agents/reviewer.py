@@ -70,6 +70,8 @@ async def rewrite_node(state: AgentState) -> AgentState:
     return state
 
 async def output_node(state: AgentState) -> AgentState:
-    """Format final output."""
+    """Format final output — promote followup_questions from observation to state."""
     state.trace.append("output")
+    if state.observation and "followup_questions" in state.observation:
+        state.followup_questions = state.observation["followup_questions"]
     return state

@@ -15,6 +15,7 @@ from backend.agents.reader import reader_node
 from backend.agents.qa import classify_node, planner_node, retrieve_node, generate_node, observe_node, check_observe_result
 from backend.agents.reviewer import reviewer_node, rewrite_node, decide_loop, output_node
 from backend.config import config
+from backend.storage.session_store import SessionStore
 
 
 def should_interrupt(state: AgentState) -> list[str]:
@@ -117,6 +118,18 @@ async def stream_graph(
         user_query=query,
     )
     tid = thread_id or str(uuid.uuid4())
+
+    # Create session for this query (Segment 1 only — Segment 2 reuses)
+    session_store = SessionStore()
+    session_id = thread_id or await session_store.create_session(paper_id)
+    if not thread_id:
+        init_payload = {
+            "event": "init",
+            "thread_id": tid,
+            "session_id": session_id,
+        }
+        yield f"event: init\ndata: {json.dumps(init_payload)}\n\n"
+
     config_dict = {"configurable": {"thread_id": tid}}
 
     # ----- Segment 1: first pass (reader → classify → planner) -----
@@ -165,6 +178,17 @@ async def stream_graph(
                 )
                 return  # Stop Segment 1 — wait for approval
 
+        if kind == "on_chain_end" and node_name == "output":
+            output = data.get("output", {})
+            if isinstance(output, dict):
+                state = AgentState(**{k: v for k, v in output.items() if k in AgentState.__dataclass_fields__})
+            else:
+                state = output if isinstance(output, AgentState) else AgentState()
+            state.session_id = session_id
+            await _record_messages(session_id, query, state)
+            yield _build_done_payload(state)
+            return
+
         # Pass through other events in first pass (skip raw chat model stream)
         if kind != "on_chat_model_stream":
             yield _serialize_event(kind, node_name, data)
@@ -196,12 +220,52 @@ async def stream_graph(
                 state = AgentState(**{k: v for k, v in output.items() if k in AgentState.__dataclass_fields__})
             else:
                 state = output if isinstance(output, AgentState) else AgentState()
+            state.session_id = session_id
+            await _record_messages(session_id, query, state)
             yield _build_done_payload(state)
             return
 
         # Skip raw chat model stream events (already handled as tokens above)
         if kind != "on_chat_model_stream":
             yield _serialize_event(kind, node_name, data)
+
+
+async def _record_messages(session_id: str, user_query: str, state: AgentState) -> None:
+    """Persist user query + assistant response to session store."""
+    store = SessionStore()
+    await store.add_message(session_id, "user", user_query, {})
+    meta = {
+        "evidence_list": [
+            {
+                "evidence_id": e.evidence_id,
+                "level": e.level.value if e.level else "R2",
+                "claim": e.claim,
+                "sentence_index": e.sentence_index,
+                "char_start": e.char_start,
+                "char_end": e.char_end,
+                "page": e.page,
+                "quote": e.quote,
+                "section_heading": e.section_heading,
+                "source_title": e.source_title,
+                "source_url": e.source_url,
+                "source_venue": e.source_venue,
+                "source_year": e.source_year,
+                "reasoning": e.reasoning,
+                "based_on_evidence_ids": e.based_on_evidence_ids,
+                "confidence": e.confidence,
+            }
+            for e in state.evidence_list
+        ],
+        "quality_score": {
+            "relevance": state.quality_score.relevance if state.quality_score else 0,
+            "consistency": state.quality_score.consistency if state.quality_score else 0,
+            "completeness": state.quality_score.completeness if state.quality_score else 0,
+            "total": state.quality_score.total if state.quality_score else 0,
+        },
+        "trace": state.trace,
+        "followup_questions": state.followup_questions,
+    }
+    await store.add_message(session_id, "assistant", state.answer, meta)
 
 
 def _extract_token_text(data: dict) -> str:
@@ -243,19 +307,35 @@ def _build_done_payload(state: AgentState) -> str:
         evidence_summary.append({
             "evidence_id": e.evidence_id,
             "level": e.level.value if e.level else "R2",
-            "claim": e.claim[:100],
+            "claim": e.claim,
             "sentence_index": e.sentence_index,
             "char_start": e.char_start,
             "char_end": e.char_end,
+            "page": e.page,
+            "quote": e.quote,
+            "section_heading": e.section_heading,
+            "source_title": e.source_title,
+            "source_url": e.source_url,
+            "source_venue": e.source_venue,
+            "source_year": e.source_year,
+            "reasoning": e.reasoning,
+            "based_on_evidence_ids": e.based_on_evidence_ids,
+            "confidence": e.confidence,
         })
 
+    qs = state.quality_score
     payload = {
         "event": "done",
         "answer": state.answer,
+        "session_id": state.session_id,
         "quality_score": {
-            "total": state.quality_score.total if state.quality_score else 0,
+            "relevance": qs.relevance if qs else 0,
+            "consistency": qs.consistency if qs else 0,
+            "completeness": qs.completeness if qs else 0,
+            "total": qs.total if qs else 0,
         },
         "trace": state.trace,
         "evidence_list": evidence_summary,
+        "followup_questions": state.followup_questions,
     }
     return f"event: done\ndata: {json.dumps(payload)}\n\n"
