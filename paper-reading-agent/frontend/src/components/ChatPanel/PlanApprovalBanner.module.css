@@ -1,0 +1,96 @@
+.banner {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 12px;
+  margin: 8px;
+  background: #fafafa;
+}
+
+.heading {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #333;
+}
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.step {
+  font-size: 0.8rem;
+  padding: 4px 8px;
+  background: #fff;
+  border-radius: 4px;
+  border: 1px solid #e8e8e8;
+  color: #555;
+}
+
+.stepNum {
+  font-weight: 600;
+  color: #2563eb;
+  margin-right: 4px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.approveBtn {
+  padding: 6px 16px;
+  background: #16a34a;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.approveBtn:hover {
+  background: #15803d;
+}
+
+.rejectBtn {
+  padding: 6px 16px;
+  background: #dc2626;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.rejectBtn:hover {
+  background: #b91c1c;
+}
+
+.editBtn {
+  padding: 6px 16px;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.editBtn:hover {
+  background: #1d4ed8;
+}
+
+.feedbackArea {
+  width: 100%;
+  min-height: 60px;
+  margin-bottom: 8px;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  resize: vertical;
+  box-sizing: border-box;
+}

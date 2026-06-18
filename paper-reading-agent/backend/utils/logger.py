@@ -1,8 +1,17 @@
 import logging
 import json
 import time
+import warnings
 from pathlib import Path
 from backend.config import config
+
+# Suppress LangGraph checkpoint msgpack serialization warnings.
+# LangGraph emits UserWarning when msgpack can't serialize certain types
+# (e.g., dataclass instances stored in AgentState fields typed as Any).
+# These are cosmetic — checkpoint save/restore handles the fallback gracefully.
+warnings.filterwarnings("ignore", message=".*msgpack.*")
+warnings.filterwarnings("ignore", message=".*Failed to serialize.*")
+warnings.filterwarnings("ignore", message=".*cannot serialize.*")
 
 
 def setup_logging() -> logging.Logger:
