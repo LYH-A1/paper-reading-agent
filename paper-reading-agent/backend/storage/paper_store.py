@@ -1,4 +1,5 @@
 import json
+import re
 from backend.models.paper import Paper, Reference
 from backend.storage.database import db
 
@@ -22,6 +23,32 @@ def _dict_to_ref(d: dict) -> Reference:
         venue=d.get("venue"),
         doi=d.get("doi"),
         url=d.get("url"),
+    )
+
+
+def _slugify_title(title: str) -> str:
+    """Normalize title for matching: lowercase + remove punctuation/extra whitespace."""
+    slug = title.lower()
+    slug = re.sub(r'[^\w\s]', '', slug)
+    slug = re.sub(r'\s+', ' ', slug).strip()
+    return slug
+
+
+def _row_to_paper(row) -> Paper:
+    """Convert a database row (aiosqlite.Row or dict) to a Paper object."""
+    refs_raw = row["references"] if "references" in row.keys() else "[]"
+    arxiv_id = row["arxiv_id"] if "arxiv_id" in row.keys() else None
+    import_source = row["import_source"] if "import_source" in row.keys() else "upload"
+    file_path = row["file_path"] or None
+    return Paper(
+        paper_id=row["paper_id"], title=row["title"],
+        authors=json.loads(row["authors"]), abstract=row["abstract"],
+        metadata=json.loads(row["metadata"]), raw_text=row["raw_text"],
+        language=row["language"], file_path=file_path,
+        parsed_at=row["parsed_at"],
+        references=[_dict_to_ref(r) for r in json.loads(refs_raw)],
+        arxiv_id=arxiv_id,
+        import_source=import_source,
     )
 
 
@@ -52,20 +79,7 @@ class PaperStore:
                 row = await cursor.fetchone()
                 if not row:
                     return None
-                refs_raw = row["references"] if "references" in row.keys() else "[]"
-                arxiv_id = row["arxiv_id"] if "arxiv_id" in row.keys() else None
-                import_source = row["import_source"] if "import_source" in row.keys() else "upload"
-                file_path = row["file_path"] or None
-                return Paper(
-                    paper_id=row["paper_id"], title=row["title"],
-                    authors=json.loads(row["authors"]), abstract=row["abstract"],
-                    metadata=json.loads(row["metadata"]), raw_text=row["raw_text"],
-                    language=row["language"], file_path=file_path,
-                    parsed_at=row["parsed_at"],
-                    references=[_dict_to_ref(r) for r in json.loads(refs_raw)],
-                    arxiv_id=arxiv_id,
-                    import_source=import_source,
-                )
+                return _row_to_paper(row)
         finally:
             await conn.close()
 
@@ -91,5 +105,31 @@ class PaperStore:
             cursor = await conn.execute("DELETE FROM papers WHERE paper_id = ?", (paper_id,))
             await conn.commit()
             return cursor.rowcount > 0
+        finally:
+            await conn.close()
+
+    async def get_by_arxiv_id(self, arxiv_id: str) -> Paper | None:
+        """Find paper by arXiv ID. Returns None if not found."""
+        conn = await db.get_db()
+        try:
+            async with conn.execute(
+                "SELECT * FROM papers WHERE arxiv_id = ?", (arxiv_id,)
+            ) as cursor:
+                row = await cursor.fetchone()
+                if not row:
+                    return None
+                return _row_to_paper(row)
+        finally:
+            await conn.close()
+
+    async def get_by_title_slug(self, slug: str) -> Paper | None:
+        """Find paper by title slug match. Returns None if no match."""
+        conn = await db.get_db()
+        try:
+            async with conn.execute("SELECT * FROM papers") as cursor:
+                async for row in cursor:
+                    if _slugify_title(row["title"]) == slug:
+                        return _row_to_paper(row)
+            return None
         finally:
             await conn.close()

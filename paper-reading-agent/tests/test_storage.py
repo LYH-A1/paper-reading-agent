@@ -118,3 +118,45 @@ async def test_add_paper_with_arxiv_fields():
     assert fetched.arxiv_id == "2401.12345"
     assert fetched.import_source == "external_save"
     assert fetched.file_path is None
+
+
+@pytest.mark.asyncio
+async def test_get_by_arxiv_id_found():
+    from backend.storage.paper_store import PaperStore
+    from backend.models.paper import Paper
+    store = PaperStore()
+    paper = Paper(title="Unique Paper", arxiv_id="9999.99999", import_source="external_save")
+    await store.add_paper(paper)
+    found = await store.get_by_arxiv_id("9999.99999")
+    assert found is not None
+    assert found.title == "Unique Paper"
+
+@pytest.mark.asyncio
+async def test_get_by_arxiv_id_not_found():
+    from backend.storage.paper_store import PaperStore
+    store = PaperStore()
+    found = await store.get_by_arxiv_id("nonexistent.00000")
+    assert found is None
+
+@pytest.mark.asyncio
+async def test_get_by_title_slug_found():
+    from backend.storage.paper_store import PaperStore
+    from backend.models.paper import Paper
+    store = PaperStore()
+    paper = Paper(title="Attention Is All You Need!", import_source="bib_import")
+    await store.add_paper(paper)
+    found = await store.get_by_title_slug("attention is all you need")
+    assert found is not None
+
+@pytest.mark.asyncio
+async def test_get_by_title_slug_not_found():
+    from backend.storage.paper_store import PaperStore
+    store = PaperStore()
+    found = await store.get_by_title_slug("nonexistent paper title")
+    assert found is None
+
+def test_slugify_title():
+    from backend.storage.paper_store import _slugify_title
+    assert _slugify_title("Attention Is All You Need!") == "attention is all you need"
+    assert _slugify_title("BERT: Pre-training of Deep Bidirectional Transformers") == "bert pretraining of deep bidirectional transformers"
+    assert _slugify_title("  Extra   Spaces  ") == "extra spaces"
