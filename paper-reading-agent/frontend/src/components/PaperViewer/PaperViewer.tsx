@@ -29,6 +29,14 @@ export interface PaperViewerProps {
    * Called when the user navigates to a different page.
    */
   onPageChange?: (page: number) => void
+  // Phase 5: no-PDF support
+  hasPDF?: boolean
+  paperTitle?: string
+  paperAuthors?: string[]
+  paperAbstract?: string
+  paperYear?: number
+  arxivPdfUrl?: string | null
+  onUploadPDF?: () => void
 }
 
 export type ViewerStatus = 'loading' | 'ready' | 'error' | 'empty'
@@ -41,7 +49,7 @@ export type ViewerStatus = 'loading' | 'ready' | 'error' | 'empty'
  * - Provides toolbar navigation (page up/down, zoom in/out/reset)
  * - Supports highlights via the text layer
  */
-export default function PaperViewer({ paperId, highlights, onHighlightClick, onReady, onPageChange }: PaperViewerProps) {
+export default function PaperViewer({ paperId, highlights, onHighlightClick, onReady, onPageChange, hasPDF = true, paperTitle, paperAuthors, paperAbstract, paperYear, arxivPdfUrl, onUploadPDF }: PaperViewerProps) {
   const [doc, setDoc] = useState<PDFDocumentProxy | null>(null)
   const [status, setStatus] = useState<ViewerStatus>('loading')
   const [errorMessage, setErrorMessage] = useState<string>('')
@@ -130,6 +138,39 @@ export default function PaperViewer({ paperId, highlights, onHighlightClick, onR
   }, [])
 
   // ---- Render ----
+  // Phase 5: No PDF — show metadata card
+  if (!hasPDF && paperTitle) {
+    return (
+      <div className={styles.viewer}>
+        <div className={styles.metadataCard}>
+          <h2>📄 {paperTitle}</h2>
+          {paperAuthors && paperAuthors.length > 0 && (
+            <p className={styles.metaAuthors}>Authors: {paperAuthors.join(', ')}</p>
+          )}
+          {paperYear && <p className={styles.metaYear}>Year: {paperYear}</p>}
+          {paperAbstract && (
+            <div className={styles.metaAbstract}>
+              <h4>Abstract</h4>
+              <p>{paperAbstract}</p>
+            </div>
+          )}
+          <div className={styles.metaActions}>
+            {onUploadPDF && (
+              <button onClick={onUploadPDF} className={styles.uploadBtn}>
+                📤 Upload PDF
+              </button>
+            )}
+            {arxivPdfUrl && (
+              <a href={arxivPdfUrl} target="_blank" rel="noopener noreferrer" className={styles.arxivBtn}>
+                Open on arXiv ↗
+              </a>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   if (status === 'loading') {
     return (
       <div className={styles.viewer}>

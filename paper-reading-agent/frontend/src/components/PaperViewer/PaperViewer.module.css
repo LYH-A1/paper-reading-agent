@@ -169,3 +169,69 @@
   color: #aaa;
   font-size: 14px;
 }
+
+.metadataCard {
+  padding: 24px;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.metadataCard h2 {
+  font-size: 20px;
+  margin-bottom: 12px;
+}
+
+.metaAuthors, .metaYear {
+  font-size: 13px;
+  color: #666;
+  margin: 4px 0;
+}
+
+.metaAbstract {
+  margin-top: 16px;
+  padding: 12px;
+  background: #f9f9f9;
+  border-radius: 6px;
+}
+
+.metaAbstract h4 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  color: #555;
+}
+
+.metaAbstract p {
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.metaActions {
+  margin-top: 16px;
+  display: flex;
+  gap: 12px;
+}
+
+.uploadBtn, .arxivBtn {
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.uploadBtn {
+  background: #1976d2;
+  color: white;
+  border: none;
+}
+
+.arxivBtn {
+  background: white;
+  border: 1px solid #ccc;
+  color: #333;
+}
+
+.arxivBtn:hover {
+  background: #f5f5f5;
+}
