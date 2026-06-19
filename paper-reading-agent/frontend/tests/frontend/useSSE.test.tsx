@@ -131,10 +131,13 @@ describe('useSSE', () => {
     act(() => {
       es._fire('done', JSON.stringify({
         answer: 'Final answer',
-        evidence_list: [{ evidence_id: 'e1', claim: 'claim1', level: 'R0', sentence_index: null, char_start: null, char_end: null, page: null, quote: null, section_heading: null, source_title: null, source_url: null, source_venue: null, source_year: null, reasoning: null, based_on_evidence_ids: [], confidence: 0.9 }],
+        evidence_list: [{ evidence_id: 'e1', claim: 'claim1', level: 'R0', sentence_index: null, char_start: null, char_end: null, page: null, quote: null, section_heading: null, source_title: null, source_url: null, source_venue: null, source_year: null, external_result_id: null, reasoning: null, based_on_evidence_ids: [], confidence: 0.9 }],
         quality_score: { relevance: 0.9, consistency: 0.8, completeness: 0.7, total: 0.8 },
         trace: ['step1', 'step2'],
         followup_questions: [],
+        reranker_used: 'default',
+        reranker_summary: { input_chunks: 10, output_chunks: 5, model: null },
+        external_results: [],
       }))
     })
 

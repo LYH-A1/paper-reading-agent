@@ -47,6 +47,7 @@ export function useSSE() {
         data.evidence_list,
         data.quality_score,
         data.trace,
+        data.external_results,
       )
       es.close()
     })

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Evidence } from '@/types'
+import { useChatStore } from '@/store/chatStore'
 import EvidenceChain from './EvidenceChain'
 import styles from './Evidence.module.css'
 
@@ -12,6 +13,11 @@ interface EvidencePopoverProps {
 
 export default function EvidencePopover({ evidence, allEvidence, onJumpToPDF, onClose }: EvidencePopoverProps) {
   const [showChain, setShowChain] = useState(false)
+  const externalResults = useChatStore((s) => s.externalResults)
+
+  const extResult = evidence.level === 'R1' && evidence.external_result_id
+    ? externalResults.find((r) => r.result_id === evidence.external_result_id)
+    : undefined
 
   return (
     <div className={styles.popover}>
@@ -42,6 +48,12 @@ export default function EvidencePopover({ evidence, allEvidence, onJumpToPDF, on
           {evidence.source_url && (
             <a href={evidence.source_url} target="_blank" rel="noopener noreferrer">
               Open source
+            </a>
+          )}
+          {extResult?.url && (
+            <a href={extResult.url} target="_blank" rel="noopener noreferrer"
+               style={{ display: 'block', marginTop: 4, color: '#1976d2' }}>
+              View on arXiv ↗
             </a>
           )}
         </div>

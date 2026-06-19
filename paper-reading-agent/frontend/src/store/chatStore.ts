@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Message, Plan, Evidence, QualityScore } from '@/types'
+import type { Message, Plan, Evidence, QualityScore, ExternalResult } from '@/types'
 
 export type ChatStatus =
   | 'idle'
@@ -19,6 +19,7 @@ interface ChatState {
   currentSessionId: string | null
   status: ChatStatus
   errorMessage: string | null
+  externalResults: ExternalResult[]
 
   appendToken: (token: string) => void
   addStepNode: (node: string) => void
@@ -29,7 +30,8 @@ interface ChatState {
   setStatus: (status: ChatStatus) => void
   setError: (msg: string) => void
   addMessage: (msg: Message) => void
-  finalizeAssistantMessage: (content: string, evidenceList: Evidence[], qualityScore: QualityScore | null, trace: string[]) => void
+  finalizeAssistantMessage: (content: string, evidenceList: Evidence[], qualityScore: QualityScore | null, trace: string[], externalResults?: ExternalResult[]) => void
+  setExternalResults: (results: ExternalResult[]) => void
   reset: () => void
 }
 
@@ -46,6 +48,7 @@ export const useChatStore = create<ChatState>((set) => ({
   currentSessionId: null,
   status: 'idle',
   errorMessage: null,
+  externalResults: [],
 
   appendToken: (token) => set((s) => ({ streamingTokens: s.streamingTokens + token })),
 
@@ -68,7 +71,7 @@ export const useChatStore = create<ChatState>((set) => ({
 
   addMessage: (msg) => set((s) => ({ messages: [...s.messages, msg] })),
 
-  finalizeAssistantMessage: (content, evidenceList, qualityScore, trace) => set((s) => {
+  finalizeAssistantMessage: (content, evidenceList, qualityScore, trace, externalResults) => set((s) => {
     const msg: Message = {
       id: genId(),
       role: 'assistant',
@@ -81,8 +84,11 @@ export const useChatStore = create<ChatState>((set) => ({
       messages: [...s.messages, msg],
       streamingTokens: '',
       status: 'complete',
+      externalResults: externalResults ?? s.externalResults,
     }
   }),
+
+  setExternalResults: (results) => set({ externalResults: results }),
 
   reset: () => set({
     messages: [],
@@ -94,5 +100,6 @@ export const useChatStore = create<ChatState>((set) => ({
     currentSessionId: null,
     status: 'idle',
     errorMessage: null,
+    externalResults: [],
   }),
 }))

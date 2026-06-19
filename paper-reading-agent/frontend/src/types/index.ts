@@ -17,6 +17,7 @@ export interface Evidence {
   source_url: string | null
   source_venue: string | null
   source_year: number | null
+  external_result_id: string | null
   // R2
   reasoning: string | null
   based_on_evidence_ids: string[]
@@ -75,6 +76,18 @@ export interface RerankerSummary {
   model: string | null
 }
 
+// ---- External Search ----
+export interface ExternalResult {
+  result_id: string
+  title: string
+  authors: string[]
+  abstract: string
+  year: number | null
+  url: string
+  source: string
+  citation_count: number | null
+}
+
 export interface DoneEvent {
   event: 'done'
   answer: string
@@ -85,6 +98,7 @@ export interface DoneEvent {
   followup_questions: string[]
   reranker_used: string
   reranker_summary: RerankerSummary
+  external_results: ExternalResult[]
 }
 
 export type SSEEvent = InitEvent | NodeEvent | HitlEvent | TokenEvent | DoneEvent

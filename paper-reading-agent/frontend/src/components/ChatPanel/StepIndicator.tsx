@@ -1,7 +1,7 @@
 import { useChatStore } from '@/store/chatStore'
 import styles from './ChatPanel.module.css'
 
-const NODE_ORDER = ['reader', 'classify', 'planner', 'retrieve', 'generate', 'observe', 'reviewer', 'output', 'rewrite']
+const NODE_ORDER = ['reader', 'classify', 'planner', 'retrieve', 'external_search', 'generate', 'observe', 'reviewer', 'output', 'rewrite']
 
 export default function StepIndicator() {
   const stepNodes = useChatStore((s) => s.stepNodes)
