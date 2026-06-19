@@ -91,3 +91,87 @@
   font-size: 0.75rem;
   color: #059669;
 }
+
+.libraryHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.libraryActions {
+  display: flex;
+  gap: 8px;
+}
+
+.compareBtn {
+  font-size: 12px;
+  padding: 4px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #f5f5f5;
+  cursor: pointer;
+}
+
+.compareBtn.active {
+  background: #e3f2fd;
+  border-color: #2196f3;
+  color: #1976d2;
+}
+
+.importBtn {
+  font-size: 12px;
+  padding: 4px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #f5f5f5;
+  cursor: pointer;
+}
+
+.compareHint {
+  font-size: 12px;
+  color: #666;
+  margin: 4px 0 8px;
+}
+
+.importStatus {
+  font-size: 12px;
+  color: #333;
+  margin: 4px 0 8px;
+  padding: 4px 8px;
+  background: #f9f9f9;
+  border-radius: 4px;
+}
+
+.compareItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.compareItem.selected {
+  background: #e3f2fd;
+}
+
+.checkbox {
+  cursor: pointer;
+}
+
+.compareFab {
+  position: sticky;
+  bottom: 0;
+  width: 100%;
+  padding: 10px;
+  background: #1976d2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  margin-top: 8px;
+}
+
+.compareFab:hover {
+  background: #1565c0;
+}
