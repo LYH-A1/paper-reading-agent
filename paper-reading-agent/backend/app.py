@@ -15,6 +15,9 @@ from backend.storage.paper_store import PaperStore
 from backend.storage.session_store import SessionStore
 from backend.config import config
 from backend.storage.database import db
+from backend.tools.bibtex_importer import parse_bibtex
+from backend.agents.compare_supervisor import stream_compare
+from backend.tools.external_search import ExternalRetriever
 
 app = FastAPI(title="Paper Reading Agent")
 
@@ -417,6 +420,117 @@ async def export_references(paper_id: str, format: str = Query(default="bib")):
         media_type="text/plain; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+# ---- Compare & Import ----
+
+@app.post("/api/compare")
+async def compare_papers(request: Request):
+    """Generate a structured comparison report for selected papers (SSE)."""
+    body = await request.json()
+    paper_ids = body.get("paper_ids", [])
+    aspects = body.get("aspects")
+    query = body.get("query", "")
+
+    if not paper_ids or len(paper_ids) < 2:
+        return JSONResponse({"error": "At least 2 papers required"}, status_code=400)
+    if len(paper_ids) > 5:
+        return JSONResponse({"error": "Maximum 5 papers allowed"}, status_code=400)
+
+    store = PaperStore()
+    for pid in paper_ids:
+        paper = await store.get_paper(pid)
+        if not paper:
+            return JSONResponse({"error": f"Paper not found: {pid}"}, status_code=400)
+
+    async def event_stream():
+        try:
+            async for sse_str in stream_compare(paper_ids, aspects, query):
+                yield sse_str
+        except Exception as e:
+            yield f"event: error\ndata: {json.dumps({'event': 'error', 'message': str(e)})}\n\n"
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+@app.post("/api/papers/save-external")
+async def save_external_paper(request: Request):
+    """Save an external arXiv paper to the library."""
+    body = await request.json()
+    arxiv_id = (body.get("arxiv_id", "") or "").strip()
+
+    if not arxiv_id:
+        return JSONResponse({"error": "arxiv_id is required"}, status_code=400)
+    if not re.match(r'^[\d]{4}\.[\d]{4,}(v\d+)?$', arxiv_id):
+        return JSONResponse({"error": "Invalid arXiv ID format"}, status_code=400)
+
+    store = PaperStore()
+
+    existing = await store.get_by_arxiv_id(arxiv_id)
+    if existing:
+        return {"paper_id": existing.paper_id, "title": existing.title, "already_saved": True}
+
+    retriever = ExternalRetriever()
+    result = await retriever.fetch_by_id(arxiv_id)
+    if not result:
+        return JSONResponse({"error": "arXiv API unavailable, try again later"}, status_code=503)
+
+    from backend.storage.paper_store import _slugify_title
+    title_slug = _slugify_title(result.title)
+    existing = await store.get_by_title_slug(title_slug)
+    if existing:
+        return {"paper_id": existing.paper_id, "title": existing.title, "already_saved": True}
+
+    paper = Paper(
+        title=result.title,
+        authors=result.authors,
+        abstract=result.abstract,
+        raw_text=result.abstract,
+        arxiv_id=arxiv_id,
+        arxiv_pdf_url=f"https://arxiv.org/pdf/{arxiv_id}.pdf",
+        file_path=None,
+        import_source="external_save",
+    )
+    await store.add_paper(paper)
+    return {"paper_id": paper.paper_id, "title": paper.title, "already_saved": False}
+
+
+@app.post("/api/papers/import-bibtex")
+async def import_bibtex(request: Request):
+    """Import papers from BibTeX content."""
+    body = await request.json()
+    bibtex_content = body.get("bibtex_content", "")
+
+    if not bibtex_content.strip():
+        return JSONResponse({"error": "Empty BibTeX content"}, status_code=400)
+
+    papers, parse_errors = parse_bibtex(bibtex_content)
+
+    store = PaperStore()
+    imported = []
+    skipped = 0
+
+    for paper in papers:
+        from backend.storage.paper_store import _slugify_title
+        title_slug = _slugify_title(paper.title)
+        existing = await store.get_by_title_slug(title_slug)
+        if existing:
+            skipped += 1
+            continue
+
+        await store.add_paper(paper)
+        imported.append({
+            "paper_id": paper.paper_id,
+            "title": paper.title,
+            "import_source": paper.import_source,
+        })
+
+    return {
+        "imported": len(imported),
+        "skipped": skipped,
+        "errors": parse_errors,
+        "papers": imported,
+    }
 
 
 def _entry_type(venue: str) -> str:

@@ -115,6 +115,21 @@ class ExternalRetriever:
             ))
         return results
 
+    async def fetch_by_id(self, arxiv_id: str) -> ExternalResult | None:
+        """Fetch a single paper's metadata from arXiv by ID."""
+        await self._respect_rate_limit()
+        url = f"http://export.arxiv.org/api/query?id_list={arxiv_id}&max_results=1"
+        try:
+            import httpx
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(url)
+                resp.raise_for_status()
+                results = self._parse_arxiv_xml(resp.text)
+                return results[0] if results else None
+        except Exception as e:
+            logger.error(f"arXiv fetch_by_id failed for {arxiv_id}: {e}")
+            return None
+
     async def _enrich_with_s2(self, results: list[ExternalResult]) -> list[ExternalResult]:
         """Enrich results with citation counts and related titles from S2."""
         import httpx
