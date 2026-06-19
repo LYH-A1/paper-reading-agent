@@ -62,6 +62,26 @@ async def generate_node(state: AgentState) -> AgentState:
     prompt = ANSWER_PROMPTS.get(state.intent, ANSWER_PROMPTS["qa"])
     context = "\n\n".join(c.text for c in state.retrieved_chunks[:5]) if state.retrieved_chunks else state.paper.abstract if state.paper else ""
 
+    # Phase 4b: append external search results
+    if state.external_search_error:
+        context = (
+            "Note: External search is currently unavailable. "
+            "Answer based on internal paper content only.\n\n" + context
+        )
+    elif state.external_results:
+        ext_lines = ["\n\n### External References (from arXiv/Semantic Scholar):\n"]
+        for i, r in enumerate(state.external_results):
+            ext_lines.append(
+                f"[EXT-{i+1}] {r.title} ({r.year or 'n.d.'})\n"
+                f"    Authors: {', '.join(r.authors[:3])}\n"
+                f"    Abstract: {r.abstract[:400]}\n"
+                f"    URL: {r.url}\n"
+                f"    Citations: {r.citation_count or 'N/A'}"
+            )
+            if r.related_titles:
+                ext_lines.append(f"    Related: {', '.join(r.related_titles[:3])}")
+        context += "\n".join(ext_lines)
+
     rewrite_feedback = ""
     if state.rewrite_count > 0 and state.quality_score:
         rewrite_feedback = f"\n\nYour previous answer scored {state.quality_score.total}/10. Please improve: {state.quality_score}"
@@ -88,6 +108,19 @@ async def observe_node(state: AgentState) -> AgentState:
             messages=[{"role": "user", "content": f"Plan: {state.plan}\n\nAnswer: {state.answer}\n\n{OBSERVE_PROMPT}"}],
             system="Respond ONLY with JSON."
         )
+        # Phase 4b: check external search sufficiency
+        if state.intent in ("compare", "recommend"):
+            ext_count = len(state.external_results) if state.external_results else 0
+            observe_cycles = state.trace.count("observe")
+            if ext_count < 2 and observe_cycles < 2 and not state.external_search_error:
+                result["sufficient"] = False
+                gaps = result.get("gaps", [])
+                if isinstance(gaps, list):
+                    gaps.append(
+                        f"External search returned only {ext_count} result(s), "
+                        "need more for comparison"
+                    )
+                    result["gaps"] = gaps
         state.observation = result
     except Exception as e:
         logger.warning(f"Observe failed: {e}, defaulting to sufficient=False")
@@ -98,13 +131,18 @@ async def observe_node(state: AgentState) -> AgentState:
 def check_observe_result(state: AgentState) -> str:
     """Conditional edge after observe."""
     obs = state.observation or {}
-    # Prevent infinite observe loop: max 3 retrieve→generate→observe cycles
+    # Prevent infinite observe loop: max 3 observe cycles
     observe_cycles = state.trace.count("observe")
     if observe_cycles >= 3:
         return "reviewer"
     if not obs.get("plan_valid", True):
         return "planner"
     if not obs.get("sufficient", False):
+        # Phase 4b: retry external search if too few results
+        if state.intent in ("compare", "recommend"):
+            ext_count = len(state.external_results) if state.external_results else 0
+            if ext_count < 2:
+                return "external_search"
         return "retrieve"
     return "reviewer"
 
