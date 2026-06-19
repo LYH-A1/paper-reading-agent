@@ -31,6 +31,7 @@ class Evidence:
     # General
     confidence: float = 0.0
     claim_group_id: str | None = None
+    external_result_id: str | None = None  # Phase 4b: links to ExternalResult.result_id
 
 @dataclass
 class QualityScore:
@@ -76,3 +77,8 @@ class AgentState:
 
     session_id: str = ""
     followup_questions: list[str] = field(default_factory=list)
+
+    # Phase 4b: external search
+    external_retriever: Any | None = None
+    external_results: list = field(default_factory=list)
+    external_search_error: str | None = None

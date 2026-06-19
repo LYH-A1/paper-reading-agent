@@ -70,3 +70,19 @@ def test_agent_state_defaults():
     assert s.evidence_list == []
     assert s.trace == []
     assert s.rewrite_count == 0
+
+
+def test_evidence_external_result_id():
+    from backend.models.state import Evidence, EvidenceLevel
+    e = Evidence(evidence_id="e1", claim="test", level=EvidenceLevel.R1)
+    assert e.external_result_id is None
+    e2 = Evidence(evidence_id="e2", claim="test", level=EvidenceLevel.R1, external_result_id="ext-123")
+    assert e2.external_result_id == "ext-123"
+
+
+def test_agent_state_external_fields():
+    from backend.models.state import AgentState
+    state = AgentState()
+    assert state.external_retriever is None
+    assert state.external_results == []
+    assert state.external_search_error is None
