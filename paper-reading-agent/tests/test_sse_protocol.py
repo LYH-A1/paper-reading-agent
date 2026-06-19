@@ -1,6 +1,5 @@
 """Tests for SSE protocol — init event and done payload."""
 import json
-import pytest
 
 
 class TestDonePayload:
@@ -51,3 +50,47 @@ class TestInitEvent:
         assert payload["event"] == "init"
         assert payload["thread_id"] == "tid-1"
         assert payload["session_id"] == "sess-1"
+
+
+def test_done_payload_includes_reranker_fields():
+    """Done SSE payload includes reranker_used and reranker_summary."""
+    from backend.agents.supervisor import _build_done_payload
+    from backend.models.state import AgentState, RetrievedChunk
+    from backend.tools.reranker import BM25FallbackReranker
+
+    class MockRetriever:
+        chunks = [{"chunk_id": "1"}] * 20
+        reranker = BM25FallbackReranker()
+
+    state = AgentState(
+        answer="test answer",
+        session_id="sess-1",
+        retrieved_chunks=[RetrievedChunk(chunk_id="1", text="test", page=1) for _ in range(5)],
+        trace=[],
+    )
+    state.retriever = MockRetriever()
+
+    result = _build_done_payload(state)
+    data_str = result.split("data: ")[1].split("\n\n")[0]
+    payload = json.loads(data_str)
+
+    assert payload["reranker_used"] == "bm25"
+    assert payload["reranker_summary"]["input_chunks"] == 20
+    assert payload["reranker_summary"]["output_chunks"] == 5
+    assert payload["reranker_summary"]["model"] is None
+
+
+def test_done_payload_handles_none_retriever():
+    """Done SSE payload degrades gracefully when retriever is None."""
+    from backend.agents.supervisor import _build_done_payload
+    from backend.models.state import AgentState
+
+    state = AgentState(answer="test", session_id="sess-1", retrieved_chunks=[], trace=[])
+    result = _build_done_payload(state)
+    data_str = result.split("data: ")[1].split("\n\n")[0]
+    payload = json.loads(data_str)
+
+    assert payload["reranker_used"] == "unknown"
+    assert payload["reranker_summary"]["input_chunks"] == 0
+    assert payload["reranker_summary"]["output_chunks"] == 0
+    assert payload["reranker_summary"]["model"] is None

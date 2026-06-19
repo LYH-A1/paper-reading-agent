@@ -43,7 +43,16 @@ async def retrieve_node(state: AgentState) -> AgentState:
 
     chunks = state.retriever.retrieve(state.user_query)
     state.retrieved_chunks = chunks
-    state.trace.append("retrieve")
+
+    # Build reranker trace entry
+    reranker = state.retriever.reranker
+    total_chunks = len(state.retriever.chunks)
+    trace_entry = f"{total_chunks} chunks -> {reranker.name} rerank"
+    if reranker.model_name:
+        trace_entry += f" ({reranker.model_name})"
+    trace_entry += f" -> top {len(chunks)}"
+    state.trace.append(trace_entry)
+
     return state
 
 async def generate_node(state: AgentState) -> AgentState:

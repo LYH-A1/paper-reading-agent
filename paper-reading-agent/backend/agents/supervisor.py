@@ -327,6 +327,7 @@ def _build_done_payload(state: AgentState) -> str:
         })
 
     qs = state.quality_score
+    reranker = state.retriever.reranker if state.retriever else None
     payload = {
         "event": "done",
         "answer": state.answer,
@@ -340,5 +341,11 @@ def _build_done_payload(state: AgentState) -> str:
         "trace": state.trace,
         "evidence_list": evidence_summary,
         "followup_questions": state.followup_questions,
+        "reranker_used": reranker.name if reranker else "unknown",
+        "reranker_summary": {
+            "input_chunks": len(state.retriever.chunks) if state.retriever else 0,
+            "output_chunks": len(state.retrieved_chunks),
+            "model": reranker.model_name if reranker and reranker.model_name else None,
+        },
     }
     return f"event: done\ndata: {json.dumps(payload)}\n\n"
