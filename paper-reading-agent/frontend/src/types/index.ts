@@ -68,13 +68,23 @@ export interface TokenEvent {
   node: 'generate'
 }
 
+// ---- Reranker ----
+export interface RerankerSummary {
+  input_chunks: number
+  output_chunks: number
+  model: string | null
+}
+
 export interface DoneEvent {
   event: 'done'
   answer: string
+  session_id?: string
   quality_score: QualityScore
   evidence_list: Evidence[]
   trace: string[]
   followup_questions: string[]
+  reranker_used: string
+  reranker_summary: RerankerSummary
 }
 
 export type SSEEvent = InitEvent | NodeEvent | HitlEvent | TokenEvent | DoneEvent
