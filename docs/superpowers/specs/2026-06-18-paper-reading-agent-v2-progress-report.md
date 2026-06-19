@@ -1,6 +1,6 @@
 # 论文阅读 Agent V2 工作进度报告
 
-> 日期：2026-06-19 | 状态：Phase 1 ✅ Phase 2 ✅ Phase 3 ✅，全部功能就绪
+> 日期：2026-06-19 | 状态：Phase 1 ✅ Phase 2 ✅ Phase 3 ✅ Phase 4a ✅，全部功能就绪
 
 ---
 
@@ -15,6 +15,7 @@
 | `2026-06-17-paper-reading-agent-v2-conversation.md` | 设计对话记录：Brainstorming 逐段确认过程，包含用户决策、设计修正、调研发现 |
 | **`2026-06-18-paper-reading-agent-v2-phase2-design.md`** | **Phase 2 设计文档**（10 章）：组件架构、SSE 协议、HITL、证据系统、布局 |
 | **`2026-06-18-paper-reading-agent-v2-phase3-design.md`** | **Phase 3 设计文档**（7 章）：FlashRank、对话导出、用户偏好 |
+| **`2026-06-19-paper-reading-agent-v2-phase4a-design.md`** | **Phase 4a 设计文档**（6 章）：BibTeX 批量导出、FlashRank 重排序可视化 |
 
 ### 实现计划 (docs/superpowers/plans/)
 
@@ -23,6 +24,7 @@
 | **`2026-06-17-paper-reading-agent-v2-plan.md`** | **Phase 1 实现计划**：14 个 Task × 逐步指令，含完整代码、测试用例、commit 信息 |
 | **`2026-06-18-paper-reading-agent-v2-phase2-plan.md`** | **Phase 2 实现计划**：11 个 Task × 逐步指令，React 前端 + PDF.js + SSE |
 | **`2026-06-18-paper-reading-agent-v2-phase3-plan.md`** | **Phase 3 实现计划**：8 个 Task × 逐步指令，FlashRank + 导出 + 偏好 |
+| **`2026-06-19-paper-reading-agent-v2-phase4a-plan.md`** | **Phase 4a 实现计划**：7 个 Task × 逐步指令，BibTeX 导出 + 重排序可视化 |
 
 ### SDD 报告 (paper-reading-agent/.sdd-reports/)
 
@@ -254,8 +256,48 @@ DeepSeek API 适配问题修复：
 
 ---
 
-## 七、下一步
+## 七、Phase 4a 完成
+
+> 日期：2026-06-19 | 状态：✅ Phase 4a 完成
+
+### Phase 4a 产出
+
+| 维度 | 内容 |
+|------|------|
+| **BibTeX 批量导出** | DB 迁移（references 列）→ PDF 解析器提取参考文献（DOI/arXiv/括号引用）→ API `GET /api/papers/{id}/references/export` → ChatPanel 导出下拉 .bib 按钮 |
+| **FlashRank 重排序可视化** | Reranker ABC 增加 `name`/`model_name` 属性 → retrieve_node 结构化 trace → SSE done 事件扩展 `reranker_used` + `reranker_summary` → 前端 DoneEvent 类型更新 |
+| **测试** | 117 全部通过（74 后端 + 43 前端） |
+| **Commits** | 7 commits |
+
+### Phase 4a 开发过程
+
+采用 Subagent-Driven Development 模式。
+
+| Task | 内容 | 文件数 | 测试 | 状态 |
+|------|------|--------|------|------|
+| 1 | DB migration + PaperStore 持久化 references | 3 | 5 | ✅ |
+| 2 | PDF 解析器参考文献提取（DOI/arXiv/括号引用） | 2 | 7 | ✅ |
+| 3 | BibTeX 导出 API | 2 | 6 | ✅ |
+| 4 | 前端 BibTeX 导出按钮 | 2 | 43 | ✅ |
+| 5 | Reranker ABC name/model_name 属性 | 2 | 13 | ✅ |
+| 6 | retrieve_node trace + done SSE 扩展 | 3 | 17 | ✅ |
+| 7 | 前端 DoneEvent 类型更新 | 1 | 43 | ✅ |
+
+### Phase 4a 设计文档 (docs/superpowers/)
+
+| 文件 | 说明 |
+|------|------|
+| **`specs/2026-06-19-paper-reading-agent-v2-phase4a-design.md`** | Phase 4a 正式设计文档：BibTeX 导出、FlashRank 可视化 |
+| **`plans/2026-06-19-paper-reading-agent-v2-phase4a-plan.md`** | Phase 4a 实现计划：7 个 Task × 逐步指令 |
+
+### 最终审查结果
+
+全分支代码审查：0 Critical，0 Important，2 Minor（exportReferences 静默吞错 + slugify 重复）。
+
+---
+
+## 八、下一步
 
 | 阶段 | 内容 | 预估 |
 |------|------|------|
-| Phase 4 | 多论文对比、外部检索 (arXiv API)、BibTeX 导出、FlashRank 重排序可视化 | 后续 |
+| Phase 4b | 外部检索 (arXiv API) + 多论文对比 | 后续 |
