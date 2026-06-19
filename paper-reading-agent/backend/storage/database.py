@@ -52,6 +52,15 @@ class Database:
             await conn.execute('ALTER TABLE papers ADD COLUMN "references" TEXT NOT NULL DEFAULT \'[]\'')
         except Exception:
             pass  # column already exists
+        # Phase 5: add arxiv_id and import_source columns
+        try:
+            await conn.execute('ALTER TABLE papers ADD COLUMN arxiv_id TEXT')
+        except Exception:
+            pass
+        try:
+            await conn.execute("ALTER TABLE papers ADD COLUMN import_source TEXT NOT NULL DEFAULT 'upload'")
+        except Exception:
+            pass
         await conn.commit()
 
 db = Database()

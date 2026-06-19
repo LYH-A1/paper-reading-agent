@@ -38,5 +38,8 @@ class Paper:
     metadata: dict = field(default_factory=dict)
     raw_text: str = ""
     language: str = "en"
-    file_path: str = ""
+    file_path: str | None = None
+    arxiv_id: str | None = None
+    arxiv_pdf_url: str | None = None
+    import_source: str = "upload"
     parsed_at: str = ""

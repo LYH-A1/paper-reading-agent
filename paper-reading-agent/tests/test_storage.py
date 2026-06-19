@@ -72,3 +72,49 @@ async def test_paper_empty_references():
     loaded = await store.get_paper(paper.paper_id)
     assert loaded is not None
     assert loaded.references == []
+
+
+@pytest.mark.asyncio
+async def test_migration_adds_arxiv_id_column():
+    from backend.storage.database import db
+    conn = await db.get_db()
+    try:
+        async with conn.execute("SELECT arxiv_id FROM papers LIMIT 0") as cursor:
+            pass  # column exists if no exception
+    finally:
+        await conn.close()
+
+
+@pytest.mark.asyncio
+async def test_migration_adds_import_source_column():
+    from backend.storage.database import db
+    conn = await db.get_db()
+    try:
+        async with conn.execute("SELECT import_source FROM papers LIMIT 0") as cursor:
+            pass
+    finally:
+        await conn.close()
+
+
+@pytest.mark.asyncio
+async def test_add_paper_with_arxiv_fields():
+    from backend.storage.paper_store import PaperStore
+    from backend.models.paper import Paper
+    store = PaperStore()
+    paper = Paper(
+        title="Test ArXiv Paper",
+        authors=["Smith, J."],
+        abstract="Test abstract.",
+        arxiv_id="2401.12345",
+        arxiv_pdf_url="https://arxiv.org/pdf/2401.12345.pdf",
+        import_source="external_save",
+        file_path=None,
+    )
+    saved = await store.add_paper(paper)
+    assert saved.arxiv_id == "2401.12345"
+
+    fetched = await store.get_paper(saved.paper_id)
+    assert fetched is not None
+    assert fetched.arxiv_id == "2401.12345"
+    assert fetched.import_source == "external_save"
+    assert fetched.file_path is None

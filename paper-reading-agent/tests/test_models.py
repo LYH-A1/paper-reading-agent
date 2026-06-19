@@ -86,3 +86,40 @@ def test_agent_state_external_fields():
     assert state.external_retriever is None
     assert state.external_results == []
     assert state.external_search_error is None
+
+
+def test_paper_default_import_source():
+    from backend.models.paper import Paper
+    p = Paper(title="test")
+    assert p.import_source == "upload"
+
+
+def test_paper_file_path_none():
+    from backend.models.paper import Paper
+    p = Paper(title="test", file_path=None)
+    assert p.file_path is None
+
+
+def test_paper_arxiv_id_optional():
+    from backend.models.paper import Paper
+    p = Paper(title="test")
+    assert p.arxiv_id is None
+
+
+def test_paper_arxiv_pdf_url_optional():
+    from backend.models.paper import Paper
+    p = Paper(title="test", arxiv_id="2401.12345", arxiv_pdf_url="https://arxiv.org/pdf/2401.12345.pdf")
+    assert p.arxiv_id == "2401.12345"
+    assert p.arxiv_pdf_url == "https://arxiv.org/pdf/2401.12345.pdf"
+
+
+def test_paper_import_source_bib():
+    from backend.models.paper import Paper
+    p = Paper(title="test", import_source="bib_import")
+    assert p.import_source == "bib_import"
+
+
+def test_paper_import_source_external_save():
+    from backend.models.paper import Paper
+    p = Paper(title="test", import_source="external_save")
+    assert p.import_source == "external_save"
