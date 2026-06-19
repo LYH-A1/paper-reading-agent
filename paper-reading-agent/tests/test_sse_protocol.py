@@ -94,3 +94,52 @@ def test_done_payload_handles_none_retriever():
     assert payload["reranker_summary"]["input_chunks"] == 0
     assert payload["reranker_summary"]["output_chunks"] == 0
     assert payload["reranker_summary"]["model"] is None
+
+
+def test_done_payload_includes_external_results():
+    """Done SSE payload includes external_results when present."""
+    from backend.agents.supervisor import _build_done_payload
+    from backend.models.state import AgentState, RetrievedChunk
+    import json
+
+    # Create a minimal mock ExternalResult
+    MockExtResult = type("MockExtResult", (), {
+        "result_id": "ext-001",
+        "title": "External Paper",
+        "authors": ["Author One"],
+        "abstract": "An abstract.",
+        "year": 2025,
+        "url": "https://arxiv.org/abs/9999.99999",
+        "source": "arxiv",
+        "citation_count": 10,
+    })
+
+    state = AgentState(
+        answer="test answer",
+        session_id="sess-1",
+        retrieved_chunks=[],
+        trace=[],
+        external_results=[MockExtResult()],
+    )
+
+    result = _build_done_payload(state)
+    data_str = result.split("data: ")[1].split("\n\n")[0]
+    payload = json.loads(data_str)
+
+    assert len(payload["external_results"]) == 1
+    assert payload["external_results"][0]["result_id"] == "ext-001"
+    assert payload["external_results"][0]["title"] == "External Paper"
+
+
+def test_done_payload_empty_external_results():
+    """Done SSE payload includes empty external_results list by default."""
+    from backend.agents.supervisor import _build_done_payload
+    from backend.models.state import AgentState
+    import json
+
+    state = AgentState(answer="test", session_id="sess-1", retrieved_chunks=[], trace=[])
+    result = _build_done_payload(state)
+    data_str = result.split("data: ")[1].split("\n\n")[0]
+    payload = json.loads(data_str)
+
+    assert payload["external_results"] == []

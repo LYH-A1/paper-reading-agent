@@ -12,7 +12,7 @@ from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from backend.models.state import AgentState
 from backend.models.paper import Paper
 from backend.agents.reader import reader_node
-from backend.agents.qa import classify_node, planner_node, retrieve_node, generate_node, observe_node, check_observe_result
+from backend.agents.qa import classify_node, planner_node, retrieve_node, generate_node, observe_node, check_observe_result, external_search_node, route_after_retrieve
 from backend.agents.reviewer import reviewer_node, rewrite_node, decide_loop, output_node
 from backend.config import config
 from backend.storage.session_store import SessionStore
@@ -40,17 +40,23 @@ async def build_graph() -> StateGraph:
     graph.add_node("reviewer", reviewer_node)
     graph.add_node("rewrite", rewrite_node)
     graph.add_node("output", output_node)
+    graph.add_node("external_search", external_search_node)
 
     graph.set_entry_point("reader")
     graph.add_edge("reader", "classify")
     graph.add_edge("classify", "planner")
     graph.add_edge("planner", "retrieve")
-    graph.add_edge("retrieve", "generate")
+    graph.add_conditional_edges("retrieve", route_after_retrieve, {
+        "external_search": "external_search",
+        "generate": "generate",
+    })
+    graph.add_edge("external_search", "generate")
     graph.add_edge("generate", "observe")
     graph.add_conditional_edges("observe", check_observe_result, {
         "reviewer": "reviewer",
         "retrieve": "retrieve",
         "planner": "planner",
+        "external_search": "external_search",
     })
     graph.add_conditional_edges("reviewer", decide_loop, {
         "output": "output",
@@ -208,6 +214,7 @@ async def stream_graph(
 
         if kind == "on_chain_start" and node_name in (
             "retrieve", "generate", "observe", "reviewer", "rewrite", "output",
+            "external_search",
         ):
             yield f"event: node\ndata: {json.dumps({'event': 'node', 'node': node_name})}\n\n"
 
@@ -347,5 +354,18 @@ def _build_done_payload(state: AgentState) -> str:
             "output_chunks": len(state.retrieved_chunks),
             "model": reranker.model_name if reranker and reranker.model_name else None,
         },
+        "external_results": [
+            {
+                "result_id": r.result_id,
+                "title": r.title,
+                "authors": r.authors,
+                "abstract": r.abstract[:400],
+                "year": r.year,
+                "url": r.url,
+                "source": r.source,
+                "citation_count": r.citation_count,
+            }
+            for r in (state.external_results or [])
+        ],
     }
     return f"event: done\ndata: {json.dumps(payload)}\n\n"
