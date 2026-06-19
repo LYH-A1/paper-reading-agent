@@ -58,3 +58,96 @@
 .exportBtn:hover {
   background: #e5e7eb;
 }
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: white;
+  border-radius: 8px;
+  padding: 24px;
+  max-width: 480px;
+  width: 90%;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+}
+
+.modal h3 {
+  margin: 0 0 16px;
+  font-size: 18px;
+}
+
+.modalSection {
+  margin-bottom: 16px;
+}
+
+.label {
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 6px;
+  color: #555;
+}
+
+.paperList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+
+.paperList li {
+  padding: 2px 0;
+}
+
+.aspectGrid {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.aspectLabel {
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.focusInput {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.modalActions button {
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.primaryBtn {
+  background: #1976d2;
+  color: white;
+  border: none;
+}
+
+.primaryBtn:hover:not(:disabled) {
+  background: #1565c0;
+}
