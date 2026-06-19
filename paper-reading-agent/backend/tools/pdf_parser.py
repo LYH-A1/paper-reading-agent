@@ -1,7 +1,7 @@
 import re
 import time
 from pathlib import Path
-from backend.models.paper import Paper, Section
+from backend.models.paper import Paper, Section, Reference
 from backend.utils.logger import logger
 
 class PDFParseError(Exception):
@@ -35,6 +35,10 @@ class PDFParser:
             logger.warning(f"Very short text ({len(paper.raw_text)} chars) — may be scanned PDF")
 
         paper.parsed_at = time.strftime("%Y-%m-%dT%H:%M:%S")
+
+        # Extract references from raw text
+        paper.references = self._extract_references(paper.raw_text)
+
         return paper
 
     def _parse_pymupdf(self, path: Path, paper: Paper) -> Paper:
@@ -101,6 +105,63 @@ class PDFParser:
             r"^(Introduction|Background|Method|Experiment|Result|Discussion|Conclusion|Related Work|References|Acknowledgments)",
         ]
         return any(re.match(p, text, re.IGNORECASE) for p in patterns)
+
+    def _extract_references(self, text: str) -> list[Reference]:
+        """Extract references from paper text using regex patterns.
+
+        Looks for:
+        1. DOIs (10.XXXX/XXXX)
+        2. arXiv IDs (arXiv:XXXX.XXXXX)
+        3. Structured citation lines in [N] Author, "Title", Venue, Year format
+
+        Returns list of Reference objects.
+        """
+        refs: list[Reference] = []
+        seen_dois: set[str] = set()
+
+        # Pattern 1: DOI — 10.XXXX/XXXX
+        doi_pattern = r'\b(10\.\d{4,}/[^\s\]\)\},;]+)'
+        for match in re.finditer(doi_pattern, text):
+            doi = match.group(1).rstrip('.,;')
+            if doi in seen_dois:
+                continue
+            seen_dois.add(doi)
+            refs.append(Reference(title="", doi=doi))
+
+        # Pattern 2: arXiv ID — arXiv:XXXX.XXXXX or arXiv:XXXX.XXXXXvN
+        arxiv_pattern = r'(?:arXiv:\s*)(\d{4}\.\d{4,}(?:v\d+)?)'
+        for match in re.finditer(arxiv_pattern, text, re.IGNORECASE):
+            arxiv_id = match.group(1)
+            refs.append(Reference(
+                title="",
+                url=f"https://arxiv.org/abs/{arxiv_id}",
+            ))
+
+        # Pattern 3: Bracketed references — [1] Author. "Title". Venue, Year.
+        bracket_ref = re.finditer(
+            r'\[(\d+)\]\s+(.+?)\.\s*"([^"]+)"\.\s*(?:In\s+)?([^,.]+(?:,\s*\d{4})?)',
+            text,
+        )
+        for match in bracket_ref:
+            authors_str = match.group(2)
+            title = match.group(3)
+            venue_year = match.group(4).strip() if match.group(4) else ""
+            # Extract year from venue_year if present (e.g. "Proceedings of CVPR, 2016")
+            year = None
+            venue = venue_year
+            year_match = re.search(r',\s*(\d{4})\s*$', venue_year)
+            if year_match:
+                year = int(year_match.group(1))
+                venue = venue_year[:year_match.start()].rstrip(',').strip()
+            authors = [a.strip() for a in authors_str.split(" and ")]
+            refs.append(Reference(
+                title=title,
+                authors=authors,
+                year=year,
+                venue=venue if venue else None,
+            ))
+
+        return refs
 
     def _extract_metadata(self, text: str) -> tuple[str, list[str], str]:
         title = ""
