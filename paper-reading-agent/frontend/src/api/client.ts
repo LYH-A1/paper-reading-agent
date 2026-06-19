@@ -1,4 +1,4 @@
-import type { UploadResponse, PaperListResponse, ApproveRequest, ApproveResponse } from '@/types'
+import type { UploadResponse, PaperListResponse, ApproveRequest, ApproveResponse, CompareRequest, ImportBibTeXResponse, SaveExternalResponse } from '@/types'
 
 const BASE = '/api'
 
@@ -98,4 +98,43 @@ export async function exportReferences(paperId: string, paperTitle: string): Pro
   a.click()
   document.body.removeChild(a)
   URL.revokeObjectURL(url)
+}
+
+export async function comparePapers(req: CompareRequest): Promise<Response> {
+  const res = await fetch(`${BASE}/compare`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(req),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }))
+    throw new Error(err.error || 'Compare failed')
+  }
+  return res
+}
+
+export async function saveExternal(arxivId: string): Promise<SaveExternalResponse> {
+  const res = await fetch(`${BASE}/papers/save-external`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ arxiv_id: arxivId }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }))
+    throw new Error(err.error || 'Failed to save paper')
+  }
+  return res.json()
+}
+
+export async function importBibTeX(content: string): Promise<ImportBibTeXResponse> {
+  const res = await fetch(`${BASE}/papers/import-bibtex`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ bibtex_content: content }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }))
+    throw new Error(err.error || 'Import failed')
+  }
+  return res.json()
 }

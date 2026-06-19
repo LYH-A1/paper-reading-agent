@@ -125,8 +125,11 @@ export type Message = UserMessage | AssistantMessage
 export interface Paper {
   paper_id: string
   title: string
-  file_path: string
+  file_path: string | null          // Changed: was string
   parsed_at: string | null
+  arxiv_id?: string | null          // New
+  arxiv_pdf_url?: string | null     // New
+  import_source?: string            // New: "upload" | "bib_import" | "external_save"
 }
 
 // ---- Session ----
@@ -172,4 +175,24 @@ export interface PDFTextSentence {
   char_start: number
   char_end: number
   bbox: [number, number, number, number]  // [x0, y0, x1, y1]
+}
+
+// ---- Compare / Import / Save External ----
+export interface CompareRequest {
+  paper_ids: string[]
+  aspects?: string[]
+  query?: string
+}
+
+export interface ImportBibTeXResponse {
+  imported: number
+  skipped: number
+  errors: Array<{ line: number; error: string }>
+  papers: Array<{ paper_id: string; title: string; import_source: string }>
+}
+
+export interface SaveExternalResponse {
+  paper_id: string
+  title: string
+  already_saved: boolean
 }
