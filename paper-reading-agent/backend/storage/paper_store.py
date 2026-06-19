@@ -1,16 +1,41 @@
 import json
-from backend.models.paper import Paper
+from backend.models.paper import Paper, Reference
 from backend.storage.database import db
+
+
+def _ref_to_dict(ref: Reference) -> dict:
+    return {
+        "title": ref.title,
+        "authors": ref.authors,
+        "year": ref.year,
+        "venue": ref.venue,
+        "doi": ref.doi,
+        "url": ref.url,
+    }
+
+
+def _dict_to_ref(d: dict) -> Reference:
+    return Reference(
+        title=d.get("title", ""),
+        authors=d.get("authors", []),
+        year=d.get("year"),
+        venue=d.get("venue"),
+        doi=d.get("doi"),
+        url=d.get("url"),
+    )
+
 
 class PaperStore:
     async def add_paper(self, paper: Paper) -> Paper:
         conn = await db.get_db()
         try:
             await conn.execute(
-                """INSERT OR REPLACE INTO papers (paper_id, title, authors, abstract, metadata, raw_text, language, file_path, parsed_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                """INSERT OR REPLACE INTO papers
+                   (paper_id, title, authors, abstract, metadata, raw_text, language, file_path, parsed_at, "references")
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (paper.paper_id, paper.title, json.dumps(paper.authors), paper.abstract,
-                 json.dumps(paper.metadata), paper.raw_text, paper.language, paper.file_path, paper.parsed_at)
+                 json.dumps(paper.metadata), paper.raw_text, paper.language, paper.file_path,
+                 paper.parsed_at, json.dumps([_ref_to_dict(r) for r in paper.references]))
             )
             await conn.commit()
             return paper
@@ -20,16 +45,20 @@ class PaperStore:
     async def get_paper(self, paper_id: str) -> Paper | None:
         conn = await db.get_db()
         try:
-            async with conn.execute("SELECT * FROM papers WHERE paper_id = ?", (paper_id,)) as cursor:
+            async with conn.execute(
+                "SELECT * FROM papers WHERE paper_id = ?", (paper_id,)
+            ) as cursor:
                 row = await cursor.fetchone()
                 if not row:
                     return None
+                refs_raw = row["references"] if "references" in row.keys() else "[]"
                 return Paper(
                     paper_id=row["paper_id"], title=row["title"],
                     authors=json.loads(row["authors"]), abstract=row["abstract"],
                     metadata=json.loads(row["metadata"]), raw_text=row["raw_text"],
                     language=row["language"], file_path=row["file_path"],
-                    parsed_at=row["parsed_at"]
+                    parsed_at=row["parsed_at"],
+                    references=[_dict_to_ref(r) for r in json.loads(refs_raw)],
                 )
         finally:
             await conn.close()
@@ -38,7 +67,9 @@ class PaperStore:
         conn = await db.get_db()
         try:
             papers = []
-            async with conn.execute("SELECT paper_id, title, authors, parsed_at FROM papers ORDER BY parsed_at DESC") as cursor:
+            async with conn.execute(
+                "SELECT paper_id, title, authors, parsed_at FROM papers ORDER BY parsed_at DESC"
+            ) as cursor:
                 async for row in cursor:
                     papers.append(Paper(
                         paper_id=row["paper_id"], title=row["title"],

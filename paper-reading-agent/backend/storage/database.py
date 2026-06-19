@@ -47,6 +47,11 @@ class Database:
                 value TEXT NOT NULL DEFAULT ''
             );
         """)
+        # Phase 4a: add references column if it doesn't exist
+        try:
+            await conn.execute('ALTER TABLE papers ADD COLUMN "references" TEXT NOT NULL DEFAULT \'[]\'')
+        except Exception:
+            pass  # column already exists
         await conn.commit()
 
 db = Database()
