@@ -88,13 +88,10 @@ class PaperStore:
         try:
             papers = []
             async with conn.execute(
-                "SELECT paper_id, title, authors, parsed_at FROM papers ORDER BY parsed_at DESC"
+                "SELECT * FROM papers ORDER BY parsed_at DESC"
             ) as cursor:
                 async for row in cursor:
-                    papers.append(Paper(
-                        paper_id=row["paper_id"], title=row["title"],
-                        authors=json.loads(row["authors"]), parsed_at=row["parsed_at"]
-                    ))
+                    papers.append(_row_to_paper(row))
             return papers
         finally:
             await conn.close()

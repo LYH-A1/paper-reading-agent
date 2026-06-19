@@ -155,6 +155,28 @@ async def test_get_by_title_slug_not_found():
     found = await store.get_by_title_slug("nonexistent paper title")
     assert found is None
 
+@pytest.mark.asyncio
+async def test_list_papers_returns_full_fields():
+    from backend.storage.paper_store import PaperStore
+    from backend.models.paper import Paper
+    store = PaperStore()
+    paper = Paper(
+        title="Searchable Paper",
+        authors=["Test Author"],
+        abstract="This paper discusses testing.",
+        import_source="bib_import",
+        arxiv_id="2401.99999",
+    )
+    await store.add_paper(paper)
+
+    papers = await store.list_papers()
+    found = next((p for p in papers if p.paper_id == paper.paper_id), None)
+    assert found is not None
+    assert found.import_source == "bib_import"
+    assert found.arxiv_id == "2401.99999"
+    assert found.authors == ["Test Author"]
+
+
 def test_slugify_title():
     from backend.storage.paper_store import _slugify_title
     assert _slugify_title("Attention Is All You Need!") == "attention is all you need"

@@ -196,11 +196,27 @@ async def approve_plan(request: Request):
     })
 
 
+def _snippet(text: str, max_len: int = 200) -> str:
+    """Truncate text at a word boundary near max_len, append ellipsis if cut."""
+    if len(text) <= max_len:
+        return text
+    cutoff = text.rfind(' ', 0, max_len)
+    return text[:cutoff] + '...' if cutoff > 0 else text[:max_len] + '...'
+
+
 @app.get("/api/papers")
 async def list_papers():
     store = PaperStore()
     papers = await store.list_papers()
-    return [{"paper_id": p.paper_id, "title": p.title, "parsed_at": p.parsed_at} for p in papers]
+    return [{
+        "paper_id": p.paper_id,
+        "title": p.title,
+        "authors": p.authors,
+        "abstract_snippet": _snippet(p.abstract, 200) if p.abstract else "",
+        "import_source": p.import_source,
+        "arxiv_id": p.arxiv_id,
+        "parsed_at": p.parsed_at,
+    } for p in papers]
 
 
 @app.get("/api/pdf/{paper_id}")
