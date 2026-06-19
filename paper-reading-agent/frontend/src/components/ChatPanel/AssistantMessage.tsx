@@ -1,6 +1,8 @@
 import { useMemo } from 'react'
 import EvidenceBadge from '@/components/Evidence/EvidenceBadge'
 import type { Evidence, QualityScore } from '@/types'
+import { useChatStore } from '@/store/chatStore'
+import ExternalRefCard from './ExternalRefCard'
 import styles from './ChatPanel.module.css'
 
 interface AssistantMessageProps {
@@ -69,6 +71,8 @@ export default function AssistantMessage({ content, evidenceList, qualityScore, 
     [content, evidenceList],
   )
 
+  const externalResults = useChatStore((s) => s.externalResults)
+
   return (
     <div className={styles.assistantMessage}>
       <div className={styles.bubble}>
@@ -79,6 +83,15 @@ export default function AssistantMessage({ content, evidenceList, qualityScore, 
             {r1Count > 0 && <span className={styles.badgeR1}>R1x{r1Count}</span>}
             {r2Count > 0 && <span className={styles.badgeR2}>R2x{r2Count}</span>}
             {qualityScore && <span className={styles.score}>Score: {qualityScore.total}/10</span>}
+          </div>
+        )}
+        {/* Phase 5: External References */}
+        {externalResults.length > 0 && (
+          <div className={styles.externalRefs}>
+            <hr />
+            {externalResults.map((r, i) => (
+              <ExternalRefCard key={r.result_id} result={r} index={i + 1} />
+            ))}
           </div>
         )}
         {trace.length > 0 && (

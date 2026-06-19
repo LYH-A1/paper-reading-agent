@@ -151,3 +151,64 @@
 .primaryBtn:hover:not(:disabled) {
   background: #1565c0;
 }
+
+.externalRefs {
+  margin-top: 12px;
+  padding-top: 8px;
+}
+
+.externalRefCard {
+  padding: 8px;
+  margin: 6px 0;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  background: #fafafa;
+}
+
+.extRefHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.extRefTitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: #1976d2;
+  text-decoration: none;
+  flex: 1;
+}
+
+.extRefTitle:hover {
+  text-decoration: underline;
+}
+
+.extRefMeta {
+  font-size: 11px;
+  color: #888;
+  margin: 4px 0 0;
+}
+
+.saveBtn {
+  font-size: 11px;
+  padding: 2px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.saveBtn:hover:not(:disabled) {
+  background: #e3f2fd;
+  border-color: #1976d2;
+}
+
+.saveBtn.saved {
+  background: #e8f5e9;
+  border-color: #4caf50;
+  color: #2e7d32;
+  cursor: default;
+}
