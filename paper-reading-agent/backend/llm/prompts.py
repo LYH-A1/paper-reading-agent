@@ -146,3 +146,30 @@ SEARCH_QUERY_PROMPT = (
     "for searching related work on arXiv. Return ONLY a space-separated "
     "list of terms, no explanation.\n\n"
 )
+
+COMPARE_PROMPT = """You are an academic comparison analyst. Based on the following
+paper reports, generate a structured comparison report.
+
+Comparison aspects: {aspects}
+User focus: {query}
+
+Paper reports:
+{reports}
+
+Generate a structured report using markdown tables:
+
+## Method Comparison
+| Paper | Method | Core Innovation |
+
+## Experiments Comparison
+| Paper | Dataset | Key Metrics | Results |
+
+## Contributions Comparison
+| Paper | Contribution |
+
+## Limitations Comparison
+| Paper | Limitation |
+
+## Summary
+Brief synthesis of similarities, differences, and recommendations.
+"""
