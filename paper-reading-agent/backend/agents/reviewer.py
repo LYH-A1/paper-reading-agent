@@ -1,7 +1,6 @@
-from backend.models.state import AgentState, Evidence, EvidenceLevel, QualityScore
+from backend.models.state import AgentState, CompareState, Evidence, EvidenceLevel, QualityScore
 from backend.llm.client import llm_client
 from backend.llm.prompts import REVIEWER_PROMPT
-from backend.config import config
 from backend.utils.logger import logger
 
 async def reviewer_node(state: AgentState) -> AgentState:
@@ -57,10 +56,11 @@ Answer to review: {state.answer}
     state.trace.append("reviewer")
     return state
 
-def decide_loop(state: AgentState) -> str:
+def decide_loop(state: AgentState | CompareState, max_rewrites: int = 2) -> str:
+    """Phase 5: accept max_rewrites parameter. Compare graph passes 1, existing graph uses default 2."""
     if state.quality_score is None:
         return "output"
-    if state.quality_score.total >= 7 or state.rewrite_count >= config.rewrite_max:
+    if state.quality_score.total >= 7 or state.rewrite_count >= max_rewrites:
         return "output"
     return "rewrite"
 

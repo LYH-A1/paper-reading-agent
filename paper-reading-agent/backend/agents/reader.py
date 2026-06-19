@@ -12,6 +12,22 @@ async def reader_node(state: AgentState) -> AgentState:
         state.trace.append("reader(cached)")
         return state
 
+    # Phase 5: no-PDF path — generate minimal report from metadata
+    if state.paper.file_path is None:
+        paper = state.paper
+        state.report = {
+            "title": paper.title,
+            "authors": paper.authors,
+            "abstract_summary": paper.abstract[:500] if paper.abstract else "",
+            "method": "",
+            "contributions": [],
+            "experiments_summary": "",
+            "limitations": [],
+            "keywords": [],
+        }
+        state.trace.append("reader(metadata)")
+        return state
+
     parser = PDFParser()
     try:
         paper = parser.parse(state.paper.file_path)
