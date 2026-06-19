@@ -175,3 +175,66 @@
 .compareFab:hover {
   background: #1565c0;
 }
+
+.searchBar {
+  margin-bottom: 6px;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+.filterRow {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.filterLabel {
+  font-size: 12px;
+  color: #666;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.filterSelect {
+  font-size: 12px;
+  padding: 2px 4px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  background: white;
+}
+
+.paperCount {
+  font-size: 11px;
+  color: #999;
+  margin: 4px 0 8px;
+}
+
+.paperTitle {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.paperAuthors {
+  font-size: 11px;
+  color: #999;
+  flex-shrink: 0;
+}
+
+.sourceTag {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: #f0f0f0;
+  color: #888;
+  flex-shrink: 0;
+}
