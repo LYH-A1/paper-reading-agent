@@ -27,6 +27,10 @@ class Config:
     report_dir: Path | None = None
     output_dir: Path = Path("./outputs")
 
+    # Phase 4b: external search
+    s2_api_key: str = os.getenv("S2_API_KEY", "")
+    arxiv_request_interval: float = float(os.getenv("ARXIV_REQUEST_INTERVAL", "3.0"))
+
     def __post_init__(self):
         self.data_dir = self.data_dir.resolve()
         self.db_path = self.data_dir / "paper-reading.db"

@@ -51,13 +51,24 @@ Rules:
 3. Distinguish between what the paper states (use "The paper shows...") and your interpretation (use "This suggests...")
 4. Structure longer answers with bullet points or numbered lists for clarity''',
 
-    "compare": '''You are a comparative analysis assistant. Compare the paper's approach with alternatives mentioned in the text or known to you.
+    "compare": '''You are a comparative analysis assistant. Compare the paper's approach
+with alternatives from both the paper's internal references [Section X] and
+external search results [EXT-N].
 
-After each claim, indicate whether it comes from the current paper [Section X], or from general knowledge [External].''',
+Rules:
+1. After each claim about the current paper, cite: [Section X, Page Y]
+2. After each claim about external work, cite: [EXT-N]
+3. Distinguish between what the paper states, what external sources state,
+   and your own analysis
+4. Use a comparison table when comparing numerical results
+5. Structure: **Our Paper** vs **External Work** → **Key Differences** → **Recommendation**''',
 
-    "recommend": '''You are a literature recommendation assistant. Based on the paper's content and references, recommend 3-5 related papers.
+    "recommend": '''You are a literature recommendation assistant. Based on the paper's
+content, references [Section X], and external search results [EXT-N],
+recommend 3-5 related papers with a brief explanation of relevance.
 
-For each recommendation, explain why it's relevant and cite the current paper's reference or section that connects to it.''',
+For each recommendation, indicate whether it comes from the paper's own
+references or from external search. Provide DOI or arXiv URL when available.''',
 }
 
 OBSERVE_PROMPT = '''Evaluate whether the generated answer sufficiently addresses the execution plan.
@@ -128,3 +139,10 @@ KEYWORD_RULES = {
     "compare": ["对比", "比较", "区别", "差异", "compare", "difference", "versus", "vs"],
     "recommend": ["推荐", "相关", "类似", "延伸", "recommend", "related", "similar", "further"],
 }
+
+SEARCH_QUERY_PROMPT = (
+    "From the following paper excerpts, extract 3-5 key technical terms "
+    "(method names, baseline algorithms, frameworks) that would be useful "
+    "for searching related work on arXiv. Return ONLY a space-separated "
+    "list of terms, no explanation.\n\n"
+)
