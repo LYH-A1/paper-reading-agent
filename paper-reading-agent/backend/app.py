@@ -390,3 +390,98 @@ def _export_markdown(session: dict) -> Response:
         media_type="text/markdown; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+# ---- BibTeX Export ----
+
+@app.get("/api/papers/{paper_id}/references/export")
+async def export_references(paper_id: str, format: str = Query(default="bib")):
+    """Export paper references as BibTeX (.bib) file."""
+    if format != "bib":
+        return JSONResponse({"error": "Only bib format is supported"}, status_code=400)
+
+    store = PaperStore()
+    paper = await store.get_paper(paper_id)
+    if not paper:
+        return JSONResponse({"error": "Paper not found"}, status_code=404)
+
+    if not paper.references:
+        bib_content = f"% No references found for {paper.title or 'this paper'}"
+    else:
+        bib_content = _format_bibtex(paper.references)
+
+    title_slug = _slugify(paper.title or "references")
+    filename = f"{title_slug}-references.bib"
+    return Response(
+        content=bib_content,
+        media_type="text/plain; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+def _entry_type(venue: str) -> str:
+    """Determine BibTeX entry type from venue name using keyword matching."""
+    conference_keywords = [
+        "Conference", "Proceedings", "Workshop", "Symposium",
+        "CVPR", "ICML", "NeurIPS", "ACL", "EMNLP", "NAACL",
+        "ICCV", "ECCV", "ICLR", "AAAI", "IJCAI", "SIGGRAPH",
+    ]
+    if any(kw.lower() in (venue or "").lower() for kw in conference_keywords):
+        return "inproceedings"
+    return "article"
+
+
+def _cite_key(authors: list, year: int | None, title: str) -> str:
+    """Generate BibTeX cite key: FirstAuthorSurnameYearTitleWords."""
+    surname = ""
+    if authors:
+        first_author = authors[0].strip()
+        parts = first_author.split()
+        surname = parts[-1] if parts else first_author
+    surname = re.sub(r'[^a-zA-Z0-9]', '', surname).lower()
+    if not surname:
+        surname = "anonymous"
+    title_words = re.findall(r'[a-zA-Z]+', title.lower())
+    title_part = "".join(title_words[:3])
+    year_str = str(year) if year else "????"
+    return f"{surname}{year_str}{title_part}"
+
+
+def _format_authors(authors: list) -> str:
+    """Format authors as 'LastName, FirstName' joined with ' and '."""
+    formatted = []
+    for a in authors:
+        parts = a.strip().split()
+        if len(parts) >= 2:
+            formatted.append(f"{parts[-1]}, {' '.join(parts[:-1])}")
+        else:
+            formatted.append(a)
+    return " and ".join(formatted)
+
+
+def _format_bibtex(references: list) -> str:
+    """Format a list of Reference objects as BibTeX string."""
+    entries = []
+    for ref in references:
+        entry_type = _entry_type(ref.venue or "")
+        key = _cite_key(ref.authors, ref.year, ref.title)
+
+        lines = [f"@{entry_type}{{{key},"]
+        lines.append(f"  title = {{{ref.title}}},")
+        if ref.authors:
+            lines.append(f"  author = {{{_format_authors(ref.authors)}}},")
+        if ref.year:
+            lines.append(f"  year = {{{ref.year}}},")
+        if ref.venue:
+            venue_field = "booktitle" if entry_type == "inproceedings" else "journal"
+            lines.append(f"  {venue_field} = {{{ref.venue}}},")
+        if ref.doi:
+            lines.append(f"  doi = {{{ref.doi}}},")
+        if ref.url:
+            lines.append(f"  url = {{{ref.url}}},")
+        # Remove trailing comma from last field line
+        lines[-1] = lines[-1].rstrip(",")
+        lines.append("}")
+        entries.append("\n".join(lines))
+
+    return "\n\n".join(entries) + "\n"
