@@ -1,6 +1,6 @@
 # 论文阅读 Agent V2 工作进度报告
 
-> 日期：2026-06-19 | 状态：Phase 1 ✅ Phase 2 ✅ Phase 3 ✅ Phase 4a ✅ Phase 4b ✅，全部功能就绪
+> 日期：2026-06-20 | 状态：Phase 1 ✅ Phase 2 ✅ Phase 3 ✅ Phase 4a ✅ Phase 4b ✅ Phase 5 ✅ Phase 5.5 ✅，全部功能就绪
 
 ---
 
@@ -17,6 +17,8 @@
 | **`2026-06-18-paper-reading-agent-v2-phase3-design.md`** | **Phase 3 设计文档**（7 章）：FlashRank、对话导出、用户偏好 |
 | **`2026-06-19-paper-reading-agent-v2-phase4a-design.md`** | **Phase 4a 设计文档**（6 章）：BibTeX 批量导出、FlashRank 重排序可视化 |
 | **`2026-06-19-paper-reading-agent-v2-phase4b-design.md`** | **Phase 4b 设计文档**（12 章）：外部检索 (arXiv + Semantic Scholar)、单论文对比分析 |
+| **`2026-06-19-paper-reading-agent-v2-phase5-design.md`** | **Phase 5 设计文档**（10 章）：结构化对比报告、外部保存、BibTeX 导入 |
+| **`2026-06-20-paper-reading-agent-v2-phase5.5-design.md`** | **Phase 5.5 设计文档**（7 章）：论文库搜索、筛选、排序 |
 
 ### 实现计划 (docs/superpowers/plans/)
 
@@ -27,6 +29,8 @@
 | **`2026-06-18-paper-reading-agent-v2-phase3-plan.md`** | **Phase 3 实现计划**：8 个 Task × 逐步指令，FlashRank + 导出 + 偏好 |
 | **`2026-06-19-paper-reading-agent-v2-phase4a-plan.md`** | **Phase 4a 实现计划**：7 个 Task × 逐步指令，BibTeX 导出 + 重排序可视化 |
 | **`2026-06-19-paper-reading-agent-v2-phase4b-plan.md`** | **Phase 4b 实现计划**：7 个 Task × 逐步指令，外部检索 + 对比分析 |
+| **`2026-06-19-paper-reading-agent-v2-phase5-plan.md`** | **Phase 5 实现计划**：15 个 Task × 逐步指令，对比报告 + 外部保存 + BibTeX |
+| **`2026-06-20-paper-reading-agent-v2-phase5.5-plan.md`** | **Phase 5.5 实现计划**：4 个 Task × 逐步指令，论文库搜索筛选排序 |
 
 ### SDD 报告 (paper-reading-agent/.sdd-reports/)
 
@@ -339,8 +343,97 @@ DeepSeek API 适配问题修复：
 
 ---
 
-## 九、下一步
+## 九、Phase 5 完成
+
+> 日期：2026-06-19 | 状态：✅ Phase 5 完成
+
+### Phase 5 产出
+
+| 维度 | 内容 |
+|------|------|
+| **结构化对比报告** | `POST /api/compare` SSE 端点 → 独立 4 节点 LangGraph 图（reader_batch → compare → reviewer → output）→ `CompareSelectModal` 前端弹窗 → SSE 流式渲染 |
+| **外部保存到论文库** | `POST /api/papers/save-external` → arXiv ID 拉取完整元数据 → 去重（arxiv_id + title slug）→ `ExternalRefCard` 保存按钮 |
+| **BibTeX 导入** | `POST /api/papers/import-bibtex` → `bibtexparser>=2.0.0` 解析 → 批量创建无 PDF 条目 → LibraryPanel Import 按钮 |
+| **基础设施** | Paper 模型扩展（`arxiv_id`/`import_source`/`arxiv_pdf_url`/`file_path` 可选）→ DB migration → `CompareState` + `Evidence.paper_id` → `reader_node` 无 PDF 适配 → `decide_loop` 参数化 |
+| **测试** | 178 全部通过（125 后端 + 53 前端） |
+| **Commits** | 15 commits |
+
+### Phase 5 开发过程
+
+采用 Subagent-Driven Development 模式。
+
+| Task | 内容 | 文件数 | 测试 | 状态 |
+|------|------|--------|------|------|
+| 1 | Paper 模型扩展 + DB migration | 3 | 9 | ✅ |
+| 2 | Evidence.paper_id + CompareState | 1 | 4 | ✅ |
+| 3 | PaperStore 扩展（get_by_arxiv_id/get_by_title_slug） | 1 | 5 | ✅ |
+| 4 | reader_node 无 PDF + decide_loop 参数化 | 2 | 5 | ✅ |
+| 5 | BibTeX Importer 模块 | 1 | 7 | ✅ |
+| 6 | Compare Agent 节点 + COMPARE_PROMPT | 2 | 6 | ✅ |
+| 7 | Compare Supervisor（LangGraph + SSE） | 1 | 1 | ✅ |
+| 8 | 3 个新 API 端点 | 2 | 5 | ✅ |
+| 9 | 前端类型 + API Client | 2 | — | ✅ |
+| 10 | compareStore | 1 | 6 | ✅ |
+| 11 | LibraryPanel 多选 + BibTeX 导入 | 1 | — | ✅ |
+| 12 | CompareSelectModal | 1 | — | ✅ |
+| 13 | ExternalRefCard + AssistantMessage 集成 | 2 | — | ✅ |
+| 14 | PaperViewer 无 PDF 态 + StepIndicator | 2 | — | ✅ |
+| 15 | 全量测试验证 | — | 178 | ✅ |
+
+### Phase 5 设计文档 (docs/superpowers/)
+
+| 文件 | 说明 |
+|------|------|
+| **`specs/2026-06-19-paper-reading-agent-v2-phase5-design.md`** | Phase 5 正式设计文档：对比报告、外部保存、BibTeX 导入 |
+| **`plans/2026-06-19-paper-reading-agent-v2-phase5-plan.md`** | Phase 5 实现计划：15 个 Task × 逐步指令 |
+
+### 最终审查结果
+
+全分支代码审查：0 Critical，0 Important，0 Minor。
+
+---
+
+## 十、Phase 5.5 完成
+
+> 日期：2026-06-20 | 状态：✅ Phase 5.5 完成
+
+### Phase 5.5 产出
+
+| 维度 | 内容 |
+|------|------|
+| **论文库搜索** | 搜索框即时过滤（标题/作者/摘要 snippet）— 纯前端 useMemo，零延迟 |
+| **来源筛选** | 下拉选择：All / Uploaded / BibTeX Import / External Save |
+| **排序** | 下拉选择：Date (newest) / Title (A-Z) |
+| **后端扩展** | `list_papers()` 改用 `SELECT *` + `_row_to_paper` → `_snippet()` 摘要截断 → `GET /api/papers` 返回 7 字段 |
+| **测试** | 191 全部通过（131 后端 + 60 前端） |
+| **Commits** | 4 commits |
+
+### Phase 5.5 开发过程
+
+采用 Subagent-Driven Development 模式。
+
+| Task | 内容 | 文件数 | 测试 | 状态 |
+|------|------|--------|------|------|
+| 1 | 后端 list_papers 扩展 + _snippet + API 响应 | 2 | 6 | ✅ |
+| 2 | 前端 PaperListResponse 类型扩展 | 1 | 1 | ✅ |
+| 3 | LibraryPanel 搜索/筛选/排序 + CSS | 2 | — | ✅ |
+| 4 | 全量测试验证 | 1 | 6 | ✅ |
+
+### Phase 5.5 设计文档 (docs/superpowers/)
+
+| 文件 | 说明 |
+|------|------|
+| **`specs/2026-06-20-paper-reading-agent-v2-phase5.5-design.md`** | Phase 5.5 正式设计文档：论文库搜索、筛选、排序 |
+| **`plans/2026-06-20-paper-reading-agent-v2-phase5.5-plan.md`** | Phase 5.5 实现计划：4 个 Task × 逐步指令 |
+
+### 最终审查结果
+
+Spec 31 项全部核对通过。0 Critical，0 Important，0 Minor。
+
+---
+
+## 十一、下一步
 
 | 阶段 | 内容 | 预估 |
 |------|------|------|
-| Phase 5 | 论文库多选对比、外部结果"保存到论文库"、BibTeX 导入等 | 后续 |
+| Phase 6 | 对比报告追问支持、arXiv PDF 一键下载、对比报告 Markdown 表格渲染等 | 后续 |
