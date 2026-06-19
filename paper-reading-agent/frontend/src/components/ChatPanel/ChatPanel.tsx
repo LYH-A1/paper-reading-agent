@@ -7,6 +7,7 @@ import { useChatStore } from '@/store/chatStore'
 import { useAppStore } from '@/store/appStore'
 import { useSSE } from '@/hooks/useSSE'
 import { useApproval } from '@/hooks/useApproval'
+import { exportReferences } from '@/api/client'
 import styles from './ChatPanel.module.css'
 
 function slugify(text: string, maxLen: number = 50): string {
@@ -91,25 +92,37 @@ export default function ChatPanel() {
     <div className={styles.panel}>
       <div className={styles.panelHeader}>
         <StepIndicator />
-        {showExport && (
-          <div className={styles.exportGroup}>
+        <div className={styles.exportGroup}>
+          {showExport && (
+            <>
+              <button
+                className={styles.exportBtn}
+                onClick={() => handleExport('md')}
+                data-testid="export-btn"
+                title="Export as Markdown"
+              >
+                ⬇ .md
+              </button>
+              <button
+                className={styles.exportBtn}
+                onClick={() => handleExport('json')}
+                title="Export as JSON"
+              >
+                .json
+              </button>
+            </>
+          )}
+          {paper && (
             <button
               className={styles.exportBtn}
-              onClick={() => handleExport('md')}
-              data-testid="export-btn"
-              title="Export as Markdown"
+              onClick={() => exportReferences(paper.paper_id, paper.title)}
+              data-testid="export-bibtex-btn"
+              title="Export all references from this paper in BibTeX format"
             >
-              ⬇ .md
+              .bib
             </button>
-            <button
-              className={styles.exportBtn}
-              onClick={() => handleExport('json')}
-              title="Export as JSON"
-            >
-              .json
-            </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
       <MessageList />
       {isAwaitingApproval && hitlPlan && (

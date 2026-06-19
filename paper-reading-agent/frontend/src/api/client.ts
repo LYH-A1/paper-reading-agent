@@ -71,3 +71,31 @@ export async function putPreferences(prefs: Partial<Preferences>): Promise<{ sta
   }
   return res.json()
 }
+
+function slugify(text: string, maxLen: number = 50): string {
+  return text
+    .replace(/[^\w一-鿿-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, maxLen)
+}
+
+export function getReferencesExportUrl(paperId: string): string {
+  return `${BASE}/papers/${encodeURIComponent(paperId)}/references/export?format=bib`
+}
+
+export async function exportReferences(paperId: string, paperTitle: string): Promise<void> {
+  const res = await fetch(getReferencesExportUrl(paperId))
+  if (!res.ok) return
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  const slug = slugify(paperTitle || 'references')
+  const date = new Date().toISOString().slice(0, 10)
+  a.download = `${slug}-references-${date}.bib`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
