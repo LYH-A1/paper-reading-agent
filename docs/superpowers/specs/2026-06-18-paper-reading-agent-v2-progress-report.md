@@ -1,6 +1,6 @@
 # 论文阅读 Agent V2 工作进度报告
 
-> 日期：2026-06-19 | 状态：Phase 1 ✅ Phase 2 ✅ Phase 3 ✅ Phase 4a ✅，全部功能就绪
+> 日期：2026-06-19 | 状态：Phase 1 ✅ Phase 2 ✅ Phase 3 ✅ Phase 4a ✅ Phase 4b ✅，全部功能就绪
 
 ---
 
@@ -16,6 +16,7 @@
 | **`2026-06-18-paper-reading-agent-v2-phase2-design.md`** | **Phase 2 设计文档**（10 章）：组件架构、SSE 协议、HITL、证据系统、布局 |
 | **`2026-06-18-paper-reading-agent-v2-phase3-design.md`** | **Phase 3 设计文档**（7 章）：FlashRank、对话导出、用户偏好 |
 | **`2026-06-19-paper-reading-agent-v2-phase4a-design.md`** | **Phase 4a 设计文档**（6 章）：BibTeX 批量导出、FlashRank 重排序可视化 |
+| **`2026-06-19-paper-reading-agent-v2-phase4b-design.md`** | **Phase 4b 设计文档**（12 章）：外部检索 (arXiv + Semantic Scholar)、单论文对比分析 |
 
 ### 实现计划 (docs/superpowers/plans/)
 
@@ -25,6 +26,7 @@
 | **`2026-06-18-paper-reading-agent-v2-phase2-plan.md`** | **Phase 2 实现计划**：11 个 Task × 逐步指令，React 前端 + PDF.js + SSE |
 | **`2026-06-18-paper-reading-agent-v2-phase3-plan.md`** | **Phase 3 实现计划**：8 个 Task × 逐步指令，FlashRank + 导出 + 偏好 |
 | **`2026-06-19-paper-reading-agent-v2-phase4a-plan.md`** | **Phase 4a 实现计划**：7 个 Task × 逐步指令，BibTeX 导出 + 重排序可视化 |
+| **`2026-06-19-paper-reading-agent-v2-phase4b-plan.md`** | **Phase 4b 实现计划**：7 个 Task × 逐步指令，外部检索 + 对比分析 |
 
 ### SDD 报告 (paper-reading-agent/.sdd-reports/)
 
@@ -296,8 +298,49 @@ DeepSeek API 适配问题修复：
 
 ---
 
-## 八、下一步
+## 八、Phase 4b 完成
+
+> 日期：2026-06-19 | 状态：✅ Phase 4b 完成
+
+### Phase 4b 产出
+
+| 维度 | 内容 |
+|------|------|
+| **外部检索** | 新建 `external_search.py`（ExternalResult + ExternalRetriever）→ arXiv API 主检索（Atom XML 解析）→ Semantic Scholar 补充引用数/相关论文 → 三级降级策略（超时/429/失败） |
+| **对比分析** | LangGraph 新增 `external_search` 节点 → planner 路由 → retrieve 之后条件执行 → generate_node 融合 [EXT-N] 双源证据 → observe 感知外部结果充分性 → retry loop |
+| **前端** | StepIndicator 新增 `external_search` 步骤 → EvidencePopover R1 证据显示 "View on arXiv ↗" → chatStore 持久化 externalResults |
+| **测试** | 128 全部通过（85 后端 + 43 前端） |
+| **Commits** | 7 commits |
+
+### Phase 4b 开发过程
+
+采用 Subagent-Driven Development 模式。
+
+| Task | 内容 | 文件数 | 测试 | 状态 |
+|------|------|--------|------|------|
+| 1 | ExternalResult + ExternalRetriever 模块（arXiv XML + S2） | 2 | 7 | ✅ |
+| 2 | AgentState + Evidence 外部检索字段 | 2 | 9 | ✅ |
+| 3 | Config + Prompts（S2_API_KEY + SEARCH_QUERY_PROMPT） | 2 | — | ✅ |
+| 4 | external_search_node + _build_search_query + route | 1 | — | ✅ |
+| 5 | generate_node + observe_node + check_observe_result | 1 | — | ✅ |
+| 6 | supervisor.py 图集成 + SSE + done payload | 2 | 6 | ✅ |
+| 7 | 前端 types + chatStore + EvidencePopover + StepIndicator | 7 | 43 | ✅ |
+
+### Phase 4b 设计文档 (docs/superpowers/)
+
+| 文件 | 说明 |
+|------|------|
+| **`specs/2026-06-19-paper-reading-agent-v2-phase4b-design.md`** | Phase 4b 正式设计文档：外部检索、对比分析 |
+| **`plans/2026-06-19-paper-reading-agent-v2-phase4b-plan.md`** | Phase 4b 实现计划：7 个 Task × 逐步指令 |
+
+### 最终审查结果
+
+全分支代码审查：0 Critical，0 Important，0 Minor。实现干净，无正确性 bug。
+
+---
+
+## 九、下一步
 
 | 阶段 | 内容 | 预估 |
 |------|------|------|
-| Phase 4b | 外部检索 (arXiv API) + 多论文对比 | 后续 |
+| Phase 5 | 论文库多选对比、外部结果"保存到论文库"、BibTeX 导入等 | 后续 |
