@@ -19,6 +19,17 @@ class RerankerLoadError(Exception):
 class Reranker(ABC):
     """Abstract reranker interface."""
 
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        """Short identifier: 'flashrank' | 'bm25'."""
+        ...
+
+    @property
+    def model_name(self) -> str | None:
+        """Model name if applicable, None for non-ML rerankers."""
+        return None
+
     @abstractmethod
     def rerank(self, query: str, passages: list[RetrievedChunk]) -> list[RetrievedChunk]:
         """Re-rank passages by relevance to query. Returns passages sorted best-first."""
@@ -26,6 +37,10 @@ class Reranker(ABC):
 
 class BM25FallbackReranker(Reranker):
     """Zero-dependency fallback: sort by existing BM25 score descending."""
+
+    @property
+    def name(self) -> str:
+        return "bm25"
 
     def rerank(self, query: str, passages: list[RetrievedChunk]) -> list[RetrievedChunk]:
         return sorted(
@@ -43,17 +58,25 @@ class FlashRankReranker(Reranker):
     """
 
     def __init__(self, model: str = "ms-marco-MiniLM-L-12-v2"):
-        self.model_name = model
+        self._model_name = model
         self._ranker = None  # lazy -- loaded on first rerank()
+
+    @property
+    def name(self) -> str:
+        return "flashrank"
+
+    @property
+    def model_name(self) -> str | None:
+        return self._model_name
 
     def _ensure_loaded(self) -> None:
         if self._ranker is None:
             try:
                 from flashrank import Ranker
-                self._ranker = Ranker(model_name=self.model_name)
+                self._ranker = Ranker(model_name=self._model_name)
             except Exception as e:
                 raise RerankerLoadError(
-                    f"FlashRank model '{self.model_name}' failed to load: {e}"
+                    f"FlashRank model '{self._model_name}' failed to load: {e}"
                 ) from e
 
     def rerank(self, query: str, passages: list[RetrievedChunk]) -> list[RetrievedChunk]:

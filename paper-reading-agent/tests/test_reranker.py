@@ -63,6 +63,41 @@ class TestFlashRankReranker:
             assert isinstance(r._ranker, MockRanker)
 
 
+def test_flashrank_reranker_name():
+    from backend.tools.reranker import FlashRankReranker
+    r = FlashRankReranker(model="ms-marco-MiniLM-L-12-v2")
+    assert r.name == "flashrank"
+
+
+def test_flashrank_reranker_model_name():
+    from backend.tools.reranker import FlashRankReranker
+    r = FlashRankReranker(model="ms-marco-MiniLM-L-12-v2")
+    assert r.model_name == "ms-marco-MiniLM-L-12-v2"
+
+
+def test_bm25_reranker_name():
+    from backend.tools.reranker import BM25FallbackReranker
+    r = BM25FallbackReranker()
+    assert r.name == "bm25"
+
+
+def test_bm25_reranker_model_name_is_none():
+    from backend.tools.reranker import BM25FallbackReranker
+    r = BM25FallbackReranker()
+    assert r.model_name is None
+
+
+def test_reranker_name_is_abstract():
+    """Cannot instantiate Reranker without implementing name."""
+    from backend.tools.reranker import Reranker
+    import pytest
+    with pytest.raises(TypeError):
+        class Incomplete(Reranker):
+            def rerank(self, query, passages):
+                return passages
+        Incomplete()
+
+
 class TestGetReranker:
     def test_default_returns_flashrank_when_available(self):
         from backend.tools.reranker import get_reranker, FlashRankReranker
