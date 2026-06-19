@@ -1,6 +1,8 @@
+import asyncio
+
 from backend.models.state import AgentState, RetrievedChunk
 from backend.llm.client import llm_client
-from backend.llm.prompts import CLASSIFY_PROMPT, PLANNER_PROMPTS, ANSWER_PROMPTS, OBSERVE_PROMPT, KEYWORD_RULES
+from backend.llm.prompts import CLASSIFY_PROMPT, PLANNER_PROMPTS, ANSWER_PROMPTS, OBSERVE_PROMPT, KEYWORD_RULES, SEARCH_QUERY_PROMPT
 from backend.utils.logger import logger
 
 async def classify_node(state: AgentState) -> AgentState:
@@ -114,3 +116,72 @@ def _keyword_classify(query: str) -> str:
     if not scores or max(scores.values()) == 0:
         return "qa"
     return max(scores, key=scores.get)
+
+
+# ---- Phase 4b: External Search ----
+
+
+def route_after_retrieve(state: AgentState) -> str:
+    """Conditional routing: compare/recommend -> external_search, else generate."""
+    if state.intent in ("compare", "recommend"):
+        return "external_search"
+    return "generate"
+
+
+async def _build_search_query(state: AgentState) -> str:
+    """Use LLM to extract search keywords from retrieved chunks."""
+    if not state.retrieved_chunks:
+        return state.user_query
+
+    chunks_text = "\n".join(c.text[:200] for c in state.retrieved_chunks[:5])
+    prompt = SEARCH_QUERY_PROMPT + chunks_text
+    try:
+        terms, _ = await llm_client.chat(
+            messages=[{"role": "user", "content": prompt}],
+            system="Respond ONLY with the space-separated list of terms, no explanation.",
+        )
+        terms = terms.strip()
+        if len(terms.split()) < 2:
+            return state.user_query
+        return terms
+    except Exception as e:
+        logger.warning(f"Search query extraction failed: {e}, using user query")
+        return state.user_query
+
+
+async def external_search_node(state: AgentState) -> AgentState:
+    """Search external sources (arXiv + S2) for comparison context."""
+    from backend.tools.external_search import ExternalRetriever, EXTERNAL_SEARCH_TIMEOUT
+
+    if state.external_retriever is None:
+        state.external_retriever = ExternalRetriever()
+
+    query = await _build_search_query(state)
+    if state.external_results:
+        related = []
+        for r in state.external_results[:3]:
+            related.extend(r.related_titles[:1])
+        if related:
+            query = query + " " + " ".join(related[:3])
+
+    try:
+        results = await asyncio.wait_for(
+            state.external_retriever.search(query, top_k=5),
+            timeout=EXTERNAL_SEARCH_TIMEOUT,
+        )
+    except asyncio.TimeoutError:
+        state.external_search_error = "External search timed out"
+        state.trace.append("external_search: timeout")
+        return state
+    except Exception as e:
+        state.external_search_error = f"External search failed: {e}"
+        state.trace.append("external_search: error")
+        return state
+
+    state.external_results = results
+    sources = set(r.source for r in results)
+    trace_entry = f"external_search: {len(results)} results ({', '.join(sorted(sources))})"
+    if state.external_search_error:
+        trace_entry += f" (error: {state.external_search_error})"
+    state.trace.append(trace_entry)
+    return state
