@@ -150,6 +150,10 @@ export interface UploadResponse {
 export interface PaperListResponse {
   paper_id: string
   title: string
+  authors: string[]
+  abstract_snippet: string
+  import_source: string          // "upload" | "bib_import" | "external_save"
+  arxiv_id: string | null
   parsed_at: string | null
 }
 

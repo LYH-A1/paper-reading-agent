@@ -24,4 +24,19 @@ describe('Phase 5 types', () => {
     const resp = { imported: 5, skipped: 2, errors: [], papers: [] }
     expect(resp.imported).toBe(5)
   })
+
+  it('PaperListResponse has new Phase 5.5 fields', () => {
+    const p = {
+      paper_id: '1',
+      title: 'Test',
+      authors: ['Author One'],
+      abstract_snippet: 'This is a test...',
+      import_source: 'upload',
+      arxiv_id: null,
+      parsed_at: '2024-01-01',
+    }
+    expect(p.authors).toEqual(['Author One'])
+    expect(p.import_source).toBe('upload')
+    expect(p.abstract_snippet).toBe('This is a test...')
+  })
 })
