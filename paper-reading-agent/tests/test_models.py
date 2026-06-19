@@ -123,3 +123,37 @@ def test_paper_import_source_external_save():
     from backend.models.paper import Paper
     p = Paper(title="test", import_source="external_save")
     assert p.import_source == "external_save"
+
+
+def test_evidence_paper_id_default_none():
+    from backend.models.state import Evidence, EvidenceLevel
+    ev = Evidence(evidence_id="ev-1", claim="test", level=EvidenceLevel.R2)
+    assert ev.paper_id is None
+
+
+def test_evidence_paper_id_set():
+    from backend.models.state import Evidence, EvidenceLevel
+    ev = Evidence(evidence_id="ev-1", claim="test", level=EvidenceLevel.R0, paper_id="paper-123")
+    assert ev.paper_id == "paper-123"
+
+
+def test_compare_state_defaults():
+    from backend.models.state import CompareState
+    cs = CompareState()
+    assert cs.paper_ids == []
+    assert cs.answer == ""
+    assert cs.comparison_aspects is None
+    assert cs.rewrite_count == 0
+    assert cs.trace == []
+
+
+def test_compare_state_with_ids():
+    from backend.models.state import CompareState
+    cs = CompareState(
+        paper_ids=["id1", "id2"],
+        comparison_aspects=["method", "experiment"],
+        user_query="focus on training",
+    )
+    assert len(cs.paper_ids) == 2
+    assert cs.comparison_aspects == ["method", "experiment"]
+    assert cs.user_query == "focus on training"

@@ -32,6 +32,7 @@ class Evidence:
     confidence: float = 0.0
     claim_group_id: str | None = None
     external_result_id: str | None = None  # Phase 4b: links to ExternalResult.result_id
+    paper_id: str | None = None  # Phase 5: R0 evidence source paper ID (compare reports)
 
 @dataclass
 class QualityScore:
@@ -82,3 +83,19 @@ class AgentState:
     external_retriever: Any | None = None
     external_results: list = field(default_factory=list)
     external_search_error: str | None = None
+
+
+@dataclass
+class CompareState:
+    paper_ids: list[str] = field(default_factory=list)
+    papers: list = field(default_factory=list)           # list[Paper]
+    reports: list[dict] = field(default_factory=list)
+    comparison_aspects: list[str] | None = None
+    user_query: str = ""
+    answer: str = ""
+    evidence_list: list[Evidence] = field(default_factory=list)
+    quality_score: QualityScore | None = None
+    rewrite_count: int = 0
+    trace: list[str] = field(default_factory=list)
+    error: str | None = None
+    session_id: str = ""
