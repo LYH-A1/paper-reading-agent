@@ -169,10 +169,55 @@ class PDFParser:
         abstract = ""
 
         lines = [l.strip() for l in text.split("\n") if l.strip()]
-        if lines:
-            title = lines[0]
-            if len(title) > 200:
-                title = title[:200]
+
+        # Heuristic-based title extraction: skip copyright boilerplate, emails,
+        # and URLs that arXiv prepends before the actual paper title.
+        skip_phrases = [
+            "provided proper attribution",
+            "google hereby grants",
+            "permission to reproduce",
+            "arxiv:",
+            "see discussions, stats",
+            "this is a preprint",
+            "to appear in",
+        ]
+
+        def _looks_like_copyright(line: str) -> bool:
+            """Detect arXiv copyright boilerplate lines."""
+            low = line.lower()
+            if any(p in low for p in skip_phrases):
+                return True
+            # Multi-line copyright continuation: starts lowercase after a copyright line
+            if low.startswith("reproduce ") or low.startswith("scholarly "):
+                return True
+            return False
+
+        def _looks_like_meta(line: str) -> bool:
+            """Detect author emails, URLs, and other metadata lines."""
+            # Email pattern
+            if "@" in line and "." in line.split("@")[-1].split()[0] if "@" in line else False:
+                return True
+            # URL
+            if line.startswith("http://") or line.startswith("https://"):
+                return True
+            # arXiv ID line
+            if line.lower().startswith("arxiv:"):
+                return True
+            return False
+
+        # Find the first non-boilerplate line that looks like a title
+        for i, line in enumerate(lines):
+            if _looks_like_copyright(line):
+                continue
+            if _looks_like_meta(line):
+                continue
+            if len(line) < 10:  # Too short for a title
+                continue
+            # This line is likely the title
+            title = line
+            if len(title) > 300:
+                title = title[:300]
+            break
 
         abstract_match = re.search(r"Abstract\s*\n+(.+?)(?=\n\s*(?:\d+\.|[IVX]+\.)\s)", text, re.DOTALL | re.IGNORECASE)
         if abstract_match:

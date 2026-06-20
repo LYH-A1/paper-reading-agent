@@ -38,6 +38,15 @@ async def reader_node(state: AgentState) -> AgentState:
 
     state.paper = paper
 
+    # Persist corrected title/authors/abstract back to DB
+    if paper.title and not paper.title.endswith(".pdf"):
+        try:
+            from backend.storage.paper_store import PaperStore
+            ps = PaperStore()
+            await ps.add_paper(paper)
+        except Exception:
+            pass  # Best-effort — non-critical if DB write fails
+
     # Build retriever index once, cache in state
     try:
         state.retriever = HybridRetriever(paper)
