@@ -1,6 +1,6 @@
 from backend.models.state import AgentState
 from backend.tools.pdf_parser import PDFParser, PDFParseError
-from backend.tools.retriever import HybridRetriever
+from backend.tools.retriever import get_cached_retriever
 from backend.llm.client import llm_client
 from backend.llm.prompts import REPORT_PROMPT
 from backend.utils.logger import logger
@@ -47,13 +47,15 @@ async def reader_node(state: AgentState) -> AgentState:
         except Exception:
             pass  # Best-effort — non-critical if DB write fails
 
-    # Build retriever index once, cache in state
-    try:
-        state.retriever = HybridRetriever(paper)
-        logger.info(f"Built retrieval index with {len(state.retriever.chunks)} chunks")
-    except Exception as e:
-        logger.warning(f"Retriever index build failed: {e}, proceeding without retrieval")
-        state.retriever = None
+    # Build retriever index once, cache in module-level cache (not state —
+    # HybridRetriever contains non-serializable objects like SentenceTransformer
+    # and ChromaDB that LangGraph checkpoint cannot serialize).
+    from backend.tools.retriever import get_cached_retriever
+    retriever = get_cached_retriever(paper)
+    if retriever:
+        logger.info(f"Built retrieval index with {len(retriever.chunks)} chunks")
+    # Store only a sentinel in state to indicate retriever is ready
+    state.retriever = None  # Will be resolved from cache in retrieve_node
 
     # Generate structured report via LLM
     try:

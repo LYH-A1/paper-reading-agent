@@ -3,6 +3,32 @@ from backend.models.paper import Paper
 from backend.models.state import RetrievedChunk
 from backend.utils.text_splitter import split_text
 from backend.utils.logger import logger
+
+# Module-level retriever cache to avoid storing non-serializable objects
+# (SentenceTransformer, ChromaDB client, BM25 index) in LangGraph state.
+_retriever_cache: dict[str, "HybridRetriever"] = {}
+
+
+def get_cached_retriever(paper: Paper) -> "HybridRetriever | None":
+    """Get a cached retriever for the given paper, or build and cache one."""
+    key = paper.paper_id or paper.file_path or ""
+    if key in _retriever_cache:
+        return _retriever_cache[key]
+    try:
+        retriever = HybridRetriever(paper)
+        _retriever_cache[key] = retriever
+        return retriever
+    except Exception as e:
+        logger.warning(f"Retriever index build failed: {e}, proceeding without retrieval")
+        return None
+
+
+def clear_retriever_cache(paper_id: str = "") -> None:
+    """Clear cached retriever(s). If paper_id is empty, clear all."""
+    if paper_id:
+        _retriever_cache.pop(paper_id, None)
+    else:
+        _retriever_cache.clear()
 from backend.tools.reranker import Reranker, get_reranker
 
 class HybridRetriever:

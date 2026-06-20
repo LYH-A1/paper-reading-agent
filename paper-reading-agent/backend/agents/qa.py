@@ -36,19 +36,27 @@ async def planner_node(state: AgentState) -> AgentState:
     return state
 
 async def retrieve_node(state: AgentState) -> AgentState:
-    """Hybrid RAG retrieval using cached retriever from reader."""
-    if state.retriever is None:
-        logger.warning("No retriever in state, cannot retrieve")
+    """Hybrid RAG retrieval using module-level cached retriever.
+
+    The retriever is NOT stored in AgentState because it contains
+    non-serializable objects (SentenceTransformer, ChromaDB, BM25).
+    Instead, it lives in retriever._retriever_cache keyed by paper_id.
+    """
+    from backend.tools.retriever import get_cached_retriever
+
+    retriever = get_cached_retriever(state.paper) if state.paper else None
+    if retriever is None:
+        logger.warning("No retriever available, cannot retrieve")
         state.retrieved_chunks = []
         state.trace.append("retrieve(empty)")
         return state
 
-    chunks = state.retriever.retrieve(state.user_query)
+    chunks = retriever.retrieve(state.user_query)
     state.retrieved_chunks = chunks
 
     # Build reranker trace entry
-    reranker = state.retriever.reranker
-    total_chunks = len(state.retriever.chunks)
+    reranker = retriever.reranker
+    total_chunks = len(retriever.chunks)
     trace_entry = f"{total_chunks} chunks -> {reranker.name} rerank"
     if reranker.model_name:
         trace_entry += f" ({reranker.model_name})"
