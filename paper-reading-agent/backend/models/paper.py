@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-import uuid
 
 @dataclass
 class Section:
@@ -28,7 +27,7 @@ class Reference:
 
 @dataclass
 class Paper:
-    paper_id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    paper_id: str = ""
     title: str = ""
     authors: list[str] = field(default_factory=list)
     abstract: str = ""

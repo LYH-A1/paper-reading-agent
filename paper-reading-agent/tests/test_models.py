@@ -6,7 +6,7 @@ from backend.models.state import Evidence, EvidenceLevel, QualityScore, AgentSta
 
 def test_paper_defaults():
     p = Paper()
-    assert p.paper_id
+    assert p.paper_id == ""  # PaperStore generates UUID on insert
     assert p.language == "en"
     assert p.sections == []
     assert p.figures == []

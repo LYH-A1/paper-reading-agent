@@ -1,5 +1,6 @@
 import json
 import re
+import uuid
 from backend.models.paper import Paper, Reference
 from backend.storage.database import db
 
@@ -54,6 +55,8 @@ def _row_to_paper(row) -> Paper:
 
 class PaperStore:
     async def add_paper(self, paper: Paper) -> Paper:
+        if not paper.paper_id:
+            paper.paper_id = str(uuid.uuid4())
         conn = await db.get_db()
         try:
             await conn.execute(
