@@ -29,6 +29,24 @@ def should_interrupt(state: AgentState) -> list[str]:
     return []
 
 
+def _restore_paper_identity(state: AgentState, initial_state: AgentState) -> None:
+    """Restore paper identity fields that may be lost during checkpoint deserialization.
+
+    LangGraph msgpack serialization may not preserve Paper dataclass fields correctly
+    (especially those with defaults), causing paper_id to be lost. This bridges the gap.
+    """
+    if state.paper is None or initial_state.paper is None:
+        return
+    src = initial_state.paper
+    dst = state.paper
+    if not dst.paper_id and src.paper_id:
+        dst.paper_id = src.paper_id
+    if not dst.title and src.title:
+        dst.title = src.title
+    if not dst.file_path and src.file_path:
+        dst.file_path = src.file_path
+
+
 async def build_graph() -> StateGraph:
     graph = StateGraph(AgentState)
 
@@ -93,11 +111,13 @@ async def run_agent(paper_id: str, query: str) -> AgentState:
     # Run through to planner (will interrupt)
     raw_state = await graph.ainvoke(initial_state, config_dict)
     state = AgentState(**{k: v for k, v in raw_state.items() if k in AgentState.__dataclass_fields__})
+    _restore_paper_identity(state, initial_state)
 
     # Resume past interrupt (HITL auto-approved in Phase 1)
     if state.plan:
         raw_state = await graph.ainvoke(None, config_dict)
         state = AgentState(**{k: v for k, v in raw_state.items() if k in AgentState.__dataclass_fields__})
+        _restore_paper_identity(state, initial_state)
 
     return state
 
