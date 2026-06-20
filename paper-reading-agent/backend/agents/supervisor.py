@@ -169,6 +169,7 @@ async def stream_graph(
         yield f"event: init\ndata: {json.dumps(init_payload)}\n\n"
 
     config_dict = {"configurable": {"thread_id": tid}}
+    _last_answer = [""]  # mutable container for answer-delta tracking
 
     # ----- Segment 1: first pass (reader → classify → planner) -----
     async for event in graph.astream_events(
@@ -186,11 +187,11 @@ async def stream_graph(
         ):
             yield f"event: node\ndata: {json.dumps({'event': 'node', 'node': node_name})}\n\n"
 
-        # Intercept token-level streaming for chat model output
-        if kind == "on_chat_model_stream":
-            token_text = _extract_token_text(data)
-            if token_text:
-                yield f"event: token\ndata: {json.dumps({'event': 'token', 'token': token_text})}\n\n"
+        # Emit token deltas from answer changes across node boundaries
+        if kind == "on_chain_end" and node_name in ("reader", "classify", "planner"):
+            delta = _emit_answer_delta(data, _last_answer)
+            if delta:
+                yield f"event: token\ndata: {json.dumps({'event': 'token', 'token': delta})}\n\n"
 
         # After planner completes, check if we should HITL
         if kind == "on_chain_end" and node_name == "planner":
@@ -252,6 +253,14 @@ async def stream_graph(
             token_text = _extract_token_text(data)
             if token_text:
                 yield f"event: token\ndata: {json.dumps({'event': 'token', 'token': token_text})}\n\n"
+
+        # Emit token deltas from state answer changes (httpx fallback)
+        if kind == "on_chain_end" and node_name in (
+            "retrieve", "generate", "observe", "reviewer", "rewrite", "external_search",
+        ):
+            delta = _emit_answer_delta(data, _last_answer)
+            if delta:
+                yield f"event: token\ndata: {json.dumps({'event': 'token', 'token': delta})}\n\n"
 
         if kind == "on_chain_end" and node_name == "output":
             output = data.get("output", {})
@@ -324,6 +333,26 @@ def _extract_token_text(data: dict) -> str:
         return content or ""
     except Exception:
         return ""
+
+
+def _emit_answer_delta(data: dict, last_answer: list) -> str | None:
+    """Check if state answer changed and return incremental token delta.
+
+    Since we use direct httpx calls instead of LangChain chat models,
+    on_chat_model_stream does not fire. Instead, track answer changes
+    at node boundaries and emit the delta as token events.
+    """
+    output = data.get("output", {})
+    new_answer = ""
+    if isinstance(output, dict):
+        new_answer = output.get("answer", "")
+    elif hasattr(output, "answer"):
+        new_answer = output.answer or ""
+    if new_answer and new_answer != last_answer[0]:
+        delta = new_answer[len(last_answer[0]):]
+        last_answer[0] = new_answer
+        return delta
+    return None
 
 
 def _serialize_event(kind: str, node_name: str, data: dict) -> str:
