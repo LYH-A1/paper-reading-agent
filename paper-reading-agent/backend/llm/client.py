@@ -102,11 +102,13 @@ class LLMClient:
         try:
             resp = await self._call(body)
             data = resp.json()
-            content = ""
+            text_parts = []
             for block in data.get("content", []):
                 if block.get("type") == "text":
-                    content = block.get("text", "")
-                    break
+                    text = block.get("text", "")
+                    if text:
+                        text_parts.append(text)
+            content = "\n".join(text_parts) if text_parts else ""
             elapsed = int((time.monotonic() - t0) * 1000)
             usage = data.get("usage", {})
             api_logger.log(timestamp=time.strftime("%Y-%m-%dT%H:%M:%S"), model=self.cfg.model,
