@@ -16,6 +16,7 @@ from backend.agents.qa import classify_node, planner_node, retrieve_node, genera
 from backend.agents.reviewer import reviewer_node, rewrite_node, decide_loop, output_node
 from backend.config import config
 from backend.storage.session_store import SessionStore
+from backend.storage.paper_store import PaperStore
 
 
 def should_interrupt(state: AgentState) -> list[str]:
@@ -78,12 +79,16 @@ async def build_graph() -> StateGraph:
 
 async def run_agent(paper_id: str, query: str) -> AgentState:
     """Run complete agent pipeline. Returns final AgentState."""
+    store = PaperStore()
+    paper = await store.get_paper(paper_id)
+    if paper is None:
+        paper = Paper(paper_id=paper_id, file_path="", title="Unknown")
     graph = await build_graph()
     initial_state = AgentState(
-        paper=Paper(file_path=str(Path(paper_id).resolve())),
+        paper=paper,
         user_query=query
     )
-    config_dict = {"configurable": {"thread_id": initial_state.paper.file_path}}
+    config_dict = {"configurable": {"thread_id": paper_id or str(uuid.uuid4())}}
 
     # Run through to planner (will interrupt)
     raw_state = await graph.ainvoke(initial_state, config_dict)
@@ -121,9 +126,13 @@ async def stream_graph(
     Each yielded string is a complete SSE ``data: ...\n\n`` line (or
     ``event: ...\ndata: ...\n\n`` for named events).
     """
+    store = PaperStore()
+    paper = await store.get_paper(paper_id)
+    if paper is None:
+        paper = Paper(paper_id=paper_id, file_path="", title="Unknown")
     graph = await build_graph()
     initial_state = AgentState(
-        paper=Paper(file_path=str(Path(paper_id).resolve())),
+        paper=paper,
         user_query=query,
     )
     tid = thread_id or str(uuid.uuid4())
