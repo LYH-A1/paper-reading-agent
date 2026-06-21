@@ -19,7 +19,7 @@ class TestDonePayload:
                     confidence=0.95,
                 )
             ],
-            trace=["reader", "classify", "planner"],
+            trace=["reader", "classify_plan"],
             followup_questions=["What about X?", "How does Y compare?"],
         )
 

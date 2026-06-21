@@ -177,7 +177,7 @@ def check_observe_result(state: AgentState) -> str:
     if observe_cycles >= 3:
         return "reviewer"
     if not obs.get("plan_valid", True):
-        return "planner"
+        return "classify_plan"
     if not obs.get("sufficient", False):
         # Phase 4b: retry external search if too few results
         if state.intent in ("compare", "recommend"):

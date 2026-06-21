@@ -74,7 +74,7 @@ async def build_graph() -> StateGraph:
     graph.add_conditional_edges("observe", check_observe_result, {
         "reviewer": "reviewer",
         "retrieve": "retrieve",
-        "planner": "planner",
+        "classify_plan": "classify_plan",
         "external_search": "external_search",
     })
     graph.add_conditional_edges("reviewer", decide_loop, {
@@ -197,7 +197,7 @@ async def stream_graph(
             yield f"event: node\ndata: {json.dumps({'event': 'node', 'node': node_name})}\n\n"
 
         # Emit token deltas from answer changes across node boundaries
-        if kind == "on_chain_end" and node_name in ("reader", "classify", "planner"):
+        if kind == "on_chain_end" and node_name in ("reader", "classify", "classify_plan"):
             delta = _emit_answer_delta(data, _last_answer)
             if delta:
                 yield f"event: token\ndata: {json.dumps({'event': 'token', 'token': delta})}\n\n"
@@ -282,7 +282,7 @@ async def stream_graph(
                 yield f"event: token\ndata: {json.dumps({'event': 'token', 'token': delta})}\n\n"
 
         # Emit thinking events from reasoning_log
-        if kind == "on_chain_end" and node_name in ("planner", "generate", "reviewer"):
+        if kind == "on_chain_end" and node_name in ("classify_plan", "generate", "reviewer"):
             output = data.get("output", {})
             if isinstance(output, dict):
                 reasoning = output.get("reasoning_log", [])
