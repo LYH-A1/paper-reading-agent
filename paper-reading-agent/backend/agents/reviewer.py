@@ -56,8 +56,8 @@ Answer to review: {state.answer}
     state.trace.append("reviewer")
     return state
 
-def decide_loop(state: AgentState | CompareState, max_rewrites: int = 2) -> str:
-    """Phase 5: accept max_rewrites parameter. Compare graph passes 1, existing graph uses default 2."""
+def decide_loop(state: AgentState | CompareState, max_rewrites: int = 1) -> str:
+    """Phase 5: accept max_rewrites parameter. Default 1; compare graph also uses 1."""
     if state.quality_score is None:
         return "output"
     if state.quality_score.total >= 7 or state.rewrite_count >= max_rewrites:
