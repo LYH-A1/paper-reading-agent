@@ -73,6 +73,36 @@ export default function EvidencePopover({ evidence, allEvidence, onJumpToPDF, on
           <p>Confidence: {(evidence.confidence * 100).toFixed(0)}%</p>
         </div>
       )}
+
+      {evidence.confidence !== undefined && evidence.confidence < 0.5 && (
+        <div style={{
+          marginTop: '8px',
+          padding: '6px 8px',
+          background: '#fff3e0',
+          borderLeft: '3px solid #ed6c02',
+          borderRadius: '4px',
+          fontSize: '12px',
+          color: '#666',
+        }}>
+          <strong>⚠️ Unverified citation</strong>
+          <p style={{ margin: '4px 0 0 0' }}>
+            This citation could not be verified in the source text.
+            {evidence.quote && (
+              <code style={{
+                display: 'block',
+                marginTop: '4px',
+                padding: '4px',
+                background: '#f5f5f5',
+                borderRadius: '3px',
+                fontSize: '11px',
+                wordBreak: 'break-all',
+              }}>
+                &ldquo;{evidence.quote.slice(0, 150)}{evidence.quote.length > 150 ? '...' : ''}&rdquo;
+              </code>
+            )}
+          </p>
+        </div>
+      )}
     </div>
   )
 }
