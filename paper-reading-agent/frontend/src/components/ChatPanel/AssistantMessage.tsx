@@ -3,6 +3,7 @@ import EvidenceBadge from '@/components/Evidence/EvidenceBadge'
 import type { Evidence, QualityScore } from '@/types'
 import { useChatStore } from '@/store/chatStore'
 import ExternalRefCard from './ExternalRefCard'
+import ThinkingPanel from './ThinkingPanel'
 import styles from './ChatPanel.module.css'
 
 interface AssistantMessageProps {
@@ -72,10 +73,14 @@ export default function AssistantMessage({ content, evidenceList, qualityScore, 
   )
 
   const externalResults = useChatStore((s) => s.externalResults)
+  const thinkingEntries = useChatStore((s) => s.thinkingEntries)
 
   return (
     <div className={styles.assistantMessage}>
       <div className={styles.bubble}>
+        {thinkingEntries.length > 0 && (
+          <ThinkingPanel entries={thinkingEntries} />
+        )}
         <div className={styles.answerContent}>{renderedContent}</div>
         {evidenceList.length > 0 && (
           <div className={styles.evidenceSummary}>

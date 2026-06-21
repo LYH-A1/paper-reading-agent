@@ -69,6 +69,12 @@ export interface TokenEvent {
   node: 'generate'
 }
 
+export interface ThinkingEvent {
+  event: 'thinking'
+  node: string   // 'planner' | 'generate' | 'reviewer'
+  text: string    // human-readable reasoning snippet
+}
+
 // ---- Reranker ----
 export interface RerankerSummary {
   input_chunks: number
@@ -101,7 +107,7 @@ export interface DoneEvent {
   external_results: ExternalResult[]
 }
 
-export type SSEEvent = InitEvent | NodeEvent | HitlEvent | TokenEvent | DoneEvent
+export type SSEEvent = InitEvent | NodeEvent | HitlEvent | TokenEvent | ThinkingEvent | DoneEvent
 
 // ---- Messages ----
 export interface UserMessage {

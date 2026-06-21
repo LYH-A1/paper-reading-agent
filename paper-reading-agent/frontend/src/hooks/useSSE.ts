@@ -1,7 +1,7 @@
 import { useCallback, useRef } from 'react'
 import { useChatStore } from '@/store/chatStore'
 import { getSSEUrl } from '@/api/client'
-import type { NodeEvent, HitlEvent, TokenEvent, DoneEvent } from '@/types'
+import type { NodeEvent, HitlEvent, TokenEvent, ThinkingEvent, DoneEvent } from '@/types'
 
 export function useSSE() {
   const eventSourceRef = useRef<EventSource | null>(null)
@@ -32,6 +32,11 @@ export function useSSE() {
     es.addEventListener('token', (e: MessageEvent) => {
       const data: TokenEvent = JSON.parse(e.data)
       store.getState().appendToken(data.text)
+    })
+
+    es.addEventListener('thinking', (e: MessageEvent) => {
+      const data: ThinkingEvent = JSON.parse(e.data)
+      store.getState().appendThinking(data.node, data.text)
     })
 
     es.addEventListener('hitl', (e: MessageEvent) => {

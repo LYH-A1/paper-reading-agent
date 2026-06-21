@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Message, Plan, Evidence, QualityScore, ExternalResult } from '@/types'
+import type { Message, Plan, Evidence, QualityScore, ExternalResult, ThinkingEvent } from '@/types'
 
 export type ChatStatus =
   | 'idle'
@@ -20,6 +20,7 @@ interface ChatState {
   status: ChatStatus
   errorMessage: string | null
   externalResults: ExternalResult[]
+  thinkingEntries: ThinkingEvent[]
 
   appendToken: (token: string) => void
   addStepNode: (node: string) => void
@@ -32,6 +33,7 @@ interface ChatState {
   addMessage: (msg: Message) => void
   finalizeAssistantMessage: (content: string, evidenceList: Evidence[], qualityScore: QualityScore | null, trace: string[], externalResults?: ExternalResult[]) => void
   setExternalResults: (results: ExternalResult[]) => void
+  appendThinking: (node: string, text: string) => void
   reset: () => void
 }
 
@@ -49,6 +51,7 @@ export const useChatStore = create<ChatState>((set) => ({
   status: 'idle',
   errorMessage: null,
   externalResults: [],
+  thinkingEntries: [],
 
   appendToken: (token) => set((s) => ({ streamingTokens: s.streamingTokens + token })),
 
@@ -90,6 +93,10 @@ export const useChatStore = create<ChatState>((set) => ({
 
   setExternalResults: (results) => set({ externalResults: results }),
 
+  appendThinking: (node, text) => set((s) => ({
+    thinkingEntries: [...s.thinkingEntries, { event: 'thinking', node, text }]
+  })),
+
   reset: () => set({
     messages: [],
     streamingTokens: '',
@@ -101,5 +108,6 @@ export const useChatStore = create<ChatState>((set) => ({
     status: 'idle',
     errorMessage: null,
     externalResults: [],
+    thinkingEntries: [],
   }),
 }))
