@@ -75,6 +75,7 @@ class AgentState:
 
     trace: list[str] = field(default_factory=list)
     error: str | None = None
+    reasoning_log: list[dict] = field(default_factory=list)
 
     session_id: str = ""
     followup_questions: list[str] = field(default_factory=list)

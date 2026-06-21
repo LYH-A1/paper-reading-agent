@@ -2,7 +2,7 @@ import asyncio
 
 from backend.models.state import AgentState, RetrievedChunk
 from backend.llm.client import llm_client
-from backend.llm.prompts import CLASSIFY_PROMPT, PLANNER_PROMPTS, ANSWER_PROMPTS, OBSERVE_PROMPT, KEYWORD_RULES, SEARCH_QUERY_PROMPT
+from backend.llm.prompts import CLASSIFY_PROMPT, CLASSIFY_PLAN_PROMPT, PLANNER_PROMPTS, ANSWER_PROMPTS, OBSERVE_PROMPT, KEYWORD_RULES, SEARCH_QUERY_PROMPT
 from backend.utils.logger import logger
 
 async def classify_node(state: AgentState) -> AgentState:
@@ -145,6 +145,76 @@ def check_observe_result(state: AgentState) -> str:
                 return "external_search"
         return "retrieve"
     return "reviewer"
+
+
+async def classify_plan_node(state: AgentState) -> AgentState:
+    """Combined classify + planner: one LLM call returns both intent and plan.
+
+    Replaces the two-node classify->planner sequence. Falls back to keyword
+    classification + default plan on LLM failure.
+    """
+    query = state.user_query
+    paper = state.paper
+
+    try:
+        result = await llm_client.chat_json(
+            messages=[{"role": "user", "content": CLASSIFY_PLAN_PROMPT.format(
+                query=query, title=paper.title if paper else ""
+            )}],
+            system="Respond ONLY with JSON."
+        )
+        state.intent = result.get("intent", "qa")
+        state.plan = result
+        # Ensure steps exist; if missing, synthesize from intent
+        if not isinstance(state.plan.get("steps"), list) or not state.plan["steps"]:
+            state.plan["steps"] = _default_steps_for_intent(state.intent, query)
+    except Exception as e:
+        logger.warning(f"Classify+Plan LLM failed: {e}, using keyword fallback")
+        state.intent = _keyword_classify(query)
+        state.plan = {"intent": state.intent, "steps": _default_steps_for_intent(state.intent, query)}
+
+    # Capture reasoning for thinking panel
+    steps = state.plan.get("steps", [])
+    if isinstance(steps, list) and steps:
+        step_descs = []
+        for s in steps[:5]:
+            action = s.get("action", "?")
+            target = str(s.get("target", "?"))[:60]
+            step_descs.append(f"{action} -> {target}")
+        state.reasoning_log.append({
+            "node": "planner",
+            "text": f"[{state.intent}] Plan: {len(steps)} step(s) — " + "; ".join(step_descs)
+        })
+
+    state.trace.append("classify_plan")
+    return state
+
+
+def _default_steps_for_intent(intent: str, query: str) -> list[dict]:
+    """Generate default plan steps when LLM fails to produce steps."""
+    if intent == "summary":
+        return [
+            {"step": 1, "action": "retrieve key sections", "tool": "retrieve", "target": "abstract and introduction"},
+            {"step": 2, "action": "retrieve method and results", "tool": "retrieve", "target": "method and experiments"},
+            {"step": 3, "action": "synthesize summary", "tool": "retrieve", "target": "conclusions and limitations"},
+        ]
+    elif intent == "compare":
+        return [
+            {"step": 1, "action": "retrieve method details", "tool": "retrieve", "target": query},
+            {"step": 2, "action": "search external references", "tool": "retrieve", "target": "related work"},
+            {"step": 3, "action": "compare approaches", "tool": "retrieve", "target": "comparison"},
+        ]
+    elif intent == "recommend":
+        return [
+            {"step": 1, "action": "retrieve contributions", "tool": "retrieve", "target": query},
+            {"step": 2, "action": "search related work", "tool": "retrieve", "target": "related papers"},
+            {"step": 3, "action": "rank recommendations", "tool": "retrieve", "target": "relevance"},
+        ]
+    else:  # qa (default)
+        return [
+            {"step": 1, "action": "retrieve relevant context", "tool": "retrieve", "target": query},
+        ]
+
 
 def _keyword_classify(query: str) -> str:
     query_lower = query.lower()
