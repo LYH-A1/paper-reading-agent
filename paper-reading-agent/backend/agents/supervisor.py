@@ -14,6 +14,7 @@ from backend.models.paper import Paper
 from backend.agents.reader import reader_node
 from backend.agents.qa import classify_node, planner_node, retrieve_node, generate_node, observe_node, check_observe_result, external_search_node, route_after_retrieve
 from backend.agents.reviewer import reviewer_node, rewrite_node, decide_loop, output_node
+from backend.agents.verify import verify_citation_node
 from backend.config import config
 from backend.storage.session_store import SessionStore
 from backend.storage.paper_store import PaperStore
@@ -58,6 +59,7 @@ async def build_graph() -> StateGraph:
     graph.add_node("observe", observe_node)
     graph.add_node("reviewer", reviewer_node)
     graph.add_node("rewrite", rewrite_node)
+    graph.add_node("verify", verify_citation_node)
     graph.add_node("output", output_node)
     graph.add_node("external_search", external_search_node)
 
@@ -78,9 +80,10 @@ async def build_graph() -> StateGraph:
         "external_search": "external_search",
     })
     graph.add_conditional_edges("reviewer", decide_loop, {
-        "output": "output",
+        "output": "verify",
         "rewrite": "rewrite",
     })
+    graph.add_edge("verify", "output")
     graph.add_edge("rewrite", "generate")
     graph.add_edge("output", END)
 
@@ -254,7 +257,7 @@ async def stream_graph(
         data = event.get("data", {})
 
         if kind == "on_chain_start" and node_name in (
-            "retrieve", "generate", "observe", "reviewer", "rewrite", "output",
+            "retrieve", "generate", "observe", "reviewer", "rewrite", "verify", "output",
             "external_search",
         ):
             yield f"event: node\ndata: {json.dumps({'event': 'node', 'node': node_name})}\n\n"
