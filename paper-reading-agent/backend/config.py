@@ -20,7 +20,7 @@ class LLMConfig:
 @dataclass
 class Config:
     llm: LLMConfig = field(default_factory=LLMConfig)
-    rewrite_max: int = int(os.getenv("REWRITE_MAX", "2"))
+    rewrite_max: int = int(os.getenv("REWRITE_MAX", "1"))
     data_dir: Path = Path(os.getenv("DATA_DIR", "./data"))
     db_path: Path | None = None
     paper_dir: Path | None = None
