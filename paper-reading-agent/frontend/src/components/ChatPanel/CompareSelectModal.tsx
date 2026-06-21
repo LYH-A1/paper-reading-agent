@@ -22,7 +22,7 @@ export default function CompareSelectModal({ onClose }: CompareSelectModalProps)
   const [selectedAspects, setSelectedAspects] = useState<string[]>(['method', 'contribution'])
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(false)
-  const { setStatus, addMessage, addStepNode, appendToken, finalizeAssistantMessage, setExternalResults, reset } = useChatStore()
+  const { setStatus, addMessage, addStepNode, appendToken, finalizeAssistantMessage, setCompareContext, setExternalResults, reset } = useChatStore()
 
   useEffect(() => {
     listPapers().then((all) => {
@@ -88,6 +88,7 @@ export default function CompareSelectModal({ onClose }: CompareSelectModalProps)
                   data.quality_score || null,
                   data.trace || [],
                 )
+                setCompareContext(selectedPaperIds, data.answer)
                 setExternalResults([])
               }
             } catch { /* skip non-JSON */ }

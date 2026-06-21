@@ -24,8 +24,13 @@ interface ChatState {
   threads: Thread[]
   activeThreadId: string | null
 
+  // Compare followup state
+  comparePaperIds: string[]
+  compareReport: string
+  setCompareContext: (paperIds: string[], report: string) => void
+
   setThreads: (threads: Thread[]) => void
-  setActiveThread: (id: string) => void
+  setActiveThread: (id: string | null) => void
   addThread: (thread: Thread) => void
 
   appendToken: (token: string) => void
@@ -60,6 +65,10 @@ export const useChatStore = create<ChatState>((set) => ({
   thinkingEntries: [],
   threads: [],
   activeThreadId: null,
+  comparePaperIds: [],
+  compareReport: '',
+
+  setCompareContext: (paperIds, report) => set({ comparePaperIds: paperIds, compareReport: report }),
 
   setThreads: (threads) => set({ threads }),
   setActiveThread: (id) => set({ activeThreadId: id }),
@@ -123,5 +132,7 @@ export const useChatStore = create<ChatState>((set) => ({
     thinkingEntries: [],
     threads: [],
     activeThreadId: null,
+    comparePaperIds: [],
+    compareReport: '',
   }),
 }))

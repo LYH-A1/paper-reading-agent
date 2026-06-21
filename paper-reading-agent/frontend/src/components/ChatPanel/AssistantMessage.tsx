@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import ReactMarkdown from 'react-markdown'
 import EvidenceBadge from '@/components/Evidence/EvidenceBadge'
 import type { Evidence, QualityScore } from '@/types'
 import { useChatStore } from '@/store/chatStore'
@@ -67,13 +68,27 @@ export default function AssistantMessage({ content, evidenceList, qualityScore, 
   const r1Count = evidenceList.filter((e) => e.level === 'R1').length
   const r2Count = evidenceList.filter((e) => e.level === 'R2').length
 
-  const renderedContent = useMemo(
-    () => renderAnswerWithBadges(content, evidenceList),
-    [content, evidenceList],
-  )
-
   const externalResults = useChatStore((s) => s.externalResults)
   const thinkingEntries = useChatStore((s) => s.thinkingEntries)
+
+  const isMarkdown = content.includes('|') && content.includes('---')
+
+  const renderedContent = useMemo(() => {
+    if (isMarkdown) {
+      return (
+        <ReactMarkdown
+          components={{
+            table: ({ children }) => <table className={styles.mdTable}>{children}</table>,
+            th: ({ children }) => <th className={styles.mdTh}>{children}</th>,
+            td: ({ children }) => <td className={styles.mdTd}>{children}</td>,
+          }}
+        >
+          {content}
+        </ReactMarkdown>
+      )
+    }
+    return renderAnswerWithBadges(content, evidenceList)
+  }, [content, evidenceList, isMarkdown])
 
   return (
     <div className={styles.assistantMessage}>

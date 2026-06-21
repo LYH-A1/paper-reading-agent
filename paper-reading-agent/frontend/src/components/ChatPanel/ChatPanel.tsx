@@ -30,6 +30,9 @@ export default function ChatPanel() {
   const activeThreadId = useChatStore((s) => s.activeThreadId)
   const setThreads = useChatStore((s) => s.setThreads)
   const setActiveThread = useChatStore((s) => s.setActiveThread)
+  const comparePaperIds = useChatStore((s) => s.comparePaperIds)
+  const compareReport = useChatStore((s) => s.compareReport)
+  const resetStore = useChatStore((s) => s.reset)
   const paper = useAppStore((s) => s.paper)
 
   const isStreaming = status === 'connecting' || status === 'streaming'
@@ -46,18 +49,90 @@ export default function ChatPanel() {
     }
   }, [paper?.paper_id])
 
+  const handleCompareFollowup = useCallback(async (query: string, store: ReturnType<typeof useChatStore.getState>) => {
+    store.setStatus('streaming')
+    store.addMessage({
+      id: crypto.randomUUID(),
+      role: 'assistant',
+      content: '',
+      evidenceList: [],
+      qualityScore: null,
+      trace: [],
+    })
+
+    try {
+      const res = await fetch('/api/compare/followup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          paper_ids: store.comparePaperIds,
+          question: query,
+          comparison_report: store.compareReport,
+        }),
+      })
+
+      const reader = res.body?.getReader()
+      if (!reader) throw new Error('No response body')
+
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          if (line.startsWith('event: ')) continue
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6))
+              if (data.event === 'token') {
+                store.appendToken(data.text)
+              } else if (data.event === 'done') {
+                store.finalizeAssistantMessage(
+                  data.answer,
+                  data.evidence_list || [],
+                  data.quality_score || null,
+                  data.trace || [],
+                )
+              }
+            } catch { /* skip */ }
+          }
+        }
+      }
+    } catch (err) {
+      store.setStatus('error')
+      store.appendToken(`\n\n⚠️ ${err instanceof Error ? err.message : 'Failed'}`)
+    }
+  }, [])
+
   const handleSend = useCallback(
     (query: string) => {
       if (!paper) return
-      start({ paper_id: paper.paper_id, query })
       const store = useChatStore.getState()
+
+      // Check if we're in compare followup mode
+      if (store.compareReport) {
+        store.addMessage({
+          id: `msg-${Date.now()}`,
+          role: 'user',
+          content: query,
+        })
+        handleCompareFollowup(query, store)
+        return
+      }
+
+      start({ paper_id: paper.paper_id, query })
       store.addMessage({
         id: `msg-${Date.now()}`,
         role: 'user',
         content: query,
       })
     },
-    [paper, start],
+    [paper, start, handleCompareFollowup],
   )
 
   const handleApprove = useCallback(() => {
@@ -163,6 +238,12 @@ export default function ChatPanel() {
           onReject={handleReject}
           onEdit={handleEdit}
         />
+      )}
+      {compareReport && (
+        <div className={styles.compareModeBar}>
+          <span>📊 Comparing {comparePaperIds.length} papers — ask a follow-up</span>
+          <button onClick={() => { resetStore() }} className={styles.compareModeClose}>✕</button>
+        </div>
       )}
       <ChatInput onSend={handleSend} disabled={isStreaming || isAwaitingApproval} />
     </div>
