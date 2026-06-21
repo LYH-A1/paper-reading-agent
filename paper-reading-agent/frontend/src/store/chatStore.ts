@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Message, Plan, Evidence, QualityScore, ExternalResult, ThinkingEvent } from '@/types'
+import type { Message, Plan, Evidence, QualityScore, ExternalResult, ThinkingEvent, Thread } from '@/types'
 
 export type ChatStatus =
   | 'idle'
@@ -21,6 +21,12 @@ interface ChatState {
   errorMessage: string | null
   externalResults: ExternalResult[]
   thinkingEntries: ThinkingEvent[]
+  threads: Thread[]
+  activeThreadId: string | null
+
+  setThreads: (threads: Thread[]) => void
+  setActiveThread: (id: string) => void
+  addThread: (thread: Thread) => void
 
   appendToken: (token: string) => void
   addStepNode: (node: string) => void
@@ -52,6 +58,12 @@ export const useChatStore = create<ChatState>((set) => ({
   errorMessage: null,
   externalResults: [],
   thinkingEntries: [],
+  threads: [],
+  activeThreadId: null,
+
+  setThreads: (threads) => set({ threads }),
+  setActiveThread: (id) => set({ activeThreadId: id }),
+  addThread: (thread) => set((s) => ({ threads: [...s.threads, thread] })),
 
   appendToken: (token) => set((s) => ({ streamingTokens: s.streamingTokens + token })),
 
@@ -109,5 +121,7 @@ export const useChatStore = create<ChatState>((set) => ({
     errorMessage: null,
     externalResults: [],
     thinkingEntries: [],
+    threads: [],
+    activeThreadId: null,
   }),
 }))

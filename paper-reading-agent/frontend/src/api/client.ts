@@ -1,4 +1,4 @@
-import type { UploadResponse, PaperListResponse, ApproveRequest, ApproveResponse, CompareRequest, ImportBibTeXResponse, SaveExternalResponse } from '@/types'
+import type { UploadResponse, PaperListResponse, ApproveRequest, ApproveResponse, CompareRequest, ImportBibTeXResponse, SaveExternalResponse, Thread } from '@/types'
 
 const BASE = '/api'
 
@@ -123,6 +123,12 @@ export async function saveExternal(arxivId: string): Promise<SaveExternalRespons
     const err = await res.json().catch(() => ({ error: res.statusText }))
     throw new Error(err.error || 'Failed to save paper')
   }
+  return res.json()
+}
+
+export async function getThreads(paperId: string): Promise<{ paper_id: string; threads: Thread[] }> {
+  const res = await fetch(`${BASE}/papers/${encodeURIComponent(paperId)}/threads`)
+  if (!res.ok) throw new Error('Failed to fetch threads')
   return res.json()
 }
 

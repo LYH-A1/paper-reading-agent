@@ -23,6 +23,7 @@ const mockGetSSEUrl = vi.hoisted(() =>
 vi.mock('../../src/api/client', () => ({
   getSSEUrl: mockGetSSEUrl,
   approvePlan: vi.fn(),
+  getThreads: vi.fn().mockResolvedValue({ paper_id: 'p1', threads: [] }),
 }))
 
 // ---- Mock EventSource ----

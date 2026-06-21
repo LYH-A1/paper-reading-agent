@@ -1,13 +1,15 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect } from 'react'
 import StepIndicator from './StepIndicator'
 import MessageList from './MessageList'
 import ChatInput from './ChatInput'
 import PlanApprovalBanner from './PlanApprovalBanner'
+import ThreadSelector from './ThreadSelector'
 import { useChatStore } from '@/store/chatStore'
 import { useAppStore } from '@/store/appStore'
 import { useSSE } from '@/hooks/useSSE'
 import { useApproval } from '@/hooks/useApproval'
-import { exportReferences } from '@/api/client'
+import { exportReferences, getThreads } from '@/api/client'
+import type { Thread } from '@/types'
 import styles from './ChatPanel.module.css'
 
 function slugify(text: string, maxLen: number = 50): string {
@@ -24,11 +26,25 @@ export default function ChatPanel() {
   const status = useChatStore((s) => s.status)
   const hitlPlan = useChatStore((s) => s.hitlPlan)
   const currentSessionId = useChatStore((s) => s.currentSessionId)
+  const threads = useChatStore((s) => s.threads)
+  const activeThreadId = useChatStore((s) => s.activeThreadId)
+  const setThreads = useChatStore((s) => s.setThreads)
+  const setActiveThread = useChatStore((s) => s.setActiveThread)
   const paper = useAppStore((s) => s.paper)
 
   const isStreaming = status === 'connecting' || status === 'streaming'
   const isAwaitingApproval = status === 'awaiting_approval'
   const showExport = status === 'complete' && currentSessionId
+
+  useEffect(() => {
+    if (paper?.paper_id) {
+      getThreads(paper.paper_id).then((data: { threads: Thread[] }) => {
+        setThreads(data.threads)
+      }).catch(() => {
+        // Silently fail — threads are non-critical
+      })
+    }
+  }, [paper?.paper_id])
 
   const handleSend = useCallback(
     (query: string) => {
@@ -124,6 +140,21 @@ export default function ChatPanel() {
           )}
         </div>
       </div>
+      <ThreadSelector
+        threads={threads}
+        activeId={activeThreadId}
+        onSelect={(id) => {
+          setActiveThread(id)
+          const store = useChatStore.getState()
+          store.reset()
+          // SSE with thread_id=id to resume this thread
+        }}
+        onNew={() => {
+          const store = useChatStore.getState()
+          store.reset()
+          setActiveThread(null)
+        }}
+      />
       <MessageList />
       {isAwaitingApproval && hitlPlan && (
         <PlanApprovalBanner

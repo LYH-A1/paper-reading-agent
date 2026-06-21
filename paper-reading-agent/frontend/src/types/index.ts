@@ -1,3 +1,10 @@
+// ---- Thread ----
+export interface Thread {
+  session_id: string
+  title: string
+  created_at: string
+}
+
 // ---- Evidence ----
 export type EvidenceLevel = 'R0' | 'R1' | 'R2'
 
