@@ -82,6 +82,9 @@ class AgentState:
     reasoning_log: list[dict] = field(default_factory=list)
     # Each entry: {"node": "planner"|"generate"|"reviewer", "text": "<reasoning snippet>"}
 
+    # Phase 7: configurable temperature for answer generation (A/B test)
+    generate_temperature: float = 0.3
+
     # Phase 4b: external search
     external_retriever: Any | None = None
     external_results: list = field(default_factory=list)
