@@ -487,6 +487,44 @@ async def compare_papers(request: Request):
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
+@app.post("/api/compare/followup")
+async def compare_followup(request: Request):
+    """Answer a follow-up question about a comparison report."""
+    body = await request.json()
+    paper_ids = body.get("paper_ids", [])
+    question = body.get("question", "")
+    comparison_report = body.get("comparison_report", "")
+
+    if not question.strip():
+        return JSONResponse({"error": "question is required"}, status_code=400)
+    if not comparison_report.strip():
+        return JSONResponse({"error": "comparison_report is required"}, status_code=400)
+
+    from backend.llm.client import llm_client
+
+    prompt = (
+        "You are a helpful academic research assistant. "
+        "Based on the following comparison report, answer the follow-up question.\n\n"
+        f"## Comparison Report\n\n{comparison_report}\n\n"
+        f"## Follow-up Question\n\n{question}\n\n"
+        "Answer the question using information from the comparison report. "
+        "If the report doesn't contain enough information, say so clearly."
+    )
+
+    async def event_stream():
+        try:
+            answer, _ = await llm_client.chat(
+                messages=[{"role": "user", "content": prompt}],
+                system="You are a helpful academic research assistant.",
+            )
+            yield f"event: token\ndata: {json.dumps({'event': 'token', 'text': answer})}\n\n"
+            yield f"event: done\ndata: {json.dumps({'event': 'done', 'answer': answer, 'evidence_list': [], 'quality_score': None, 'trace': ['compare_followup']})}\n\n"
+        except Exception as e:
+            yield f"event: error\ndata: {json.dumps({'event': 'error', 'message': str(e)})}\n\n"
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
 @app.post("/api/papers/save-external")
 async def save_external_paper(request: Request):
     """Save an external arXiv paper to the library."""
