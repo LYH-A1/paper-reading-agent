@@ -204,6 +204,24 @@ def _snippet(text: str, max_len: int = 200) -> str:
     return text[:cutoff] + '...' if cutoff > 0 else text[:max_len] + '...'
 
 
+@app.get("/api/papers/{paper_id}/threads")
+async def list_threads(paper_id: str):
+    """List all conversation threads for a paper."""
+    store = SessionStore()
+    threads = await store.list_threads(paper_id)
+    return {"paper_id": paper_id, "threads": threads}
+
+
+@app.post("/api/threads/{session_id}/title")
+async def set_thread_title(session_id: str, request: Request):
+    """Set a custom title for a conversation thread."""
+    body = await request.json()
+    title = body.get("title", "").strip()[:200]
+    store = SessionStore()
+    await store.set_thread_title(session_id, title)
+    return {"session_id": session_id, "title": title}
+
+
 @app.get("/api/papers")
 async def list_papers():
     store = PaperStore()

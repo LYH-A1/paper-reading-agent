@@ -171,6 +171,13 @@ async def stream_graph(
         }
         yield f"event: init\ndata: {json.dumps(init_payload)}\n\n"
 
+        # Auto-title the thread from the first user query
+        thread_title = query[:80] + ("..." if len(query) > 80 else "")
+        try:
+            await session_store.set_thread_title(session_id, thread_title)
+        except Exception:
+            pass  # Non-critical
+
     config_dict = {"configurable": {"thread_id": tid}}
     _last_answer = [""]  # mutable container for answer-delta tracking
     _emitted_reasoning = [0]  # mutable counter for already-emitted reasoning entries

@@ -93,3 +93,41 @@ class SessionStore:
             return results
         finally:
             await conn.close()
+
+    async def list_threads(self, paper_id: str) -> list[dict]:
+        """List all conversation threads for a paper."""
+        conn = await db.get_db()
+        try:
+            # Ensure thread_title column exists (add if missing)
+            try:
+                await conn.execute("ALTER TABLE sessions ADD COLUMN thread_title TEXT DEFAULT ''")
+                await conn.commit()
+            except Exception:
+                pass  # Column already exists
+
+            rows = []
+            async with conn.execute(
+                "SELECT session_id, created_at, thread_title FROM sessions WHERE paper_id = ? ORDER BY created_at DESC",
+                (paper_id,)
+            ) as cursor:
+                async for row in cursor:
+                    rows.append({
+                        "session_id": row["session_id"],
+                        "created_at": row["created_at"],
+                        "title": row["thread_title"] or f"Thread {row['session_id'][:8]}",
+                    })
+            return rows
+        finally:
+            await conn.close()
+
+    async def set_thread_title(self, session_id: str, title: str) -> None:
+        """Set a human-readable title for a conversation thread."""
+        conn = await db.get_db()
+        try:
+            await conn.execute(
+                "UPDATE sessions SET thread_title = ? WHERE session_id = ?",
+                (title, session_id)
+            )
+            await conn.commit()
+        finally:
+            await conn.close()
