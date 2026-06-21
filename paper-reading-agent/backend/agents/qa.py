@@ -32,6 +32,21 @@ async def planner_node(state: AgentState) -> AgentState:
     except Exception as e:
         logger.warning(f"Planner failed: {e}, using default plan")
         state.plan = {"steps": [{"step": 1, "action": "retrieve relevant context", "tool": "retrieve", "target": state.user_query}]}
+
+    # Capture reasoning for thinking panel
+    if isinstance(state.plan, dict):
+        steps = state.plan.get("steps", [])
+        if isinstance(steps, list) and steps:
+            step_descs = []
+            for s in steps[:5]:
+                action = s.get("action", "?")
+                target = str(s.get("target", "?"))[:60]
+                step_descs.append(f"{action} -> {target}")
+            state.reasoning_log.append({
+                "node": "planner",
+                "text": f"Plan: {len(steps)} step(s) — " + "; ".join(step_descs)
+            })
+
     state.trace.append("planner")
     return state
 
@@ -106,6 +121,23 @@ async def generate_node(state: AgentState) -> AgentState:
         state.error = f"Generation failed: {e}"
 
     state.answer = full_answer
+
+    # Capture reasoning for thinking panel
+    if state.retrieved_chunks:
+        sources = []
+        for i, c in enumerate(state.retrieved_chunks[:3]):
+            label = c.section_heading or f"chunk-{i+1}"
+            sources.append(label)
+        state.reasoning_log.append({
+            "node": "generate",
+            "text": f"Synthesizing answer from {len(state.retrieved_chunks)} retrieved chunks: {', '.join(sources)}"
+        })
+    elif state.external_results:
+        state.reasoning_log.append({
+            "node": "generate",
+            "text": f"Incorporating {len(state.external_results)} external search results"
+        })
+
     state.trace.append("generate")
     return state
 

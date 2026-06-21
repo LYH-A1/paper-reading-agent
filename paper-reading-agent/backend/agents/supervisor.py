@@ -170,6 +170,7 @@ async def stream_graph(
 
     config_dict = {"configurable": {"thread_id": tid}}
     _last_answer = [""]  # mutable container for answer-delta tracking
+    _emitted_reasoning = [0]  # mutable counter for already-emitted reasoning entries
 
     # ----- Segment 1: first pass (reader → classify → planner) -----
     async for event in graph.astream_events(
@@ -203,6 +204,16 @@ async def stream_graph(
             else:
                 state_intent = getattr(output, "intent", "")
                 state_plan = getattr(output, "plan", None)
+
+            # Emit thinking events from reasoning_log in Segment 1
+            if isinstance(output, dict):
+                reasoning = output.get("reasoning_log", [])
+            elif hasattr(output, "reasoning_log"):
+                reasoning = output.reasoning_log or []
+            else:
+                reasoning = []
+            for entry in reasoning:
+                yield f"event: thinking\ndata: {json.dumps({'event': 'thinking', 'node': entry['node'], 'text': entry['text']})}\n\n"
 
             if state_plan is not None and should_interrupt(
                 AgentState(
@@ -261,6 +272,20 @@ async def stream_graph(
             delta = _emit_answer_delta(data, _last_answer)
             if delta:
                 yield f"event: token\ndata: {json.dumps({'event': 'token', 'token': delta})}\n\n"
+
+        # Emit thinking events from reasoning_log
+        if kind == "on_chain_end" and node_name in ("planner", "generate", "reviewer"):
+            output = data.get("output", {})
+            if isinstance(output, dict):
+                reasoning = output.get("reasoning_log", [])
+            elif hasattr(output, "reasoning_log"):
+                reasoning = output.reasoning_log or []
+            else:
+                reasoning = []
+            new_entries = reasoning[_emitted_reasoning[0]:]
+            _emitted_reasoning[0] = len(reasoning)
+            for entry in new_entries:
+                yield f"event: thinking\ndata: {json.dumps({'event': 'thinking', 'node': entry['node'], 'text': entry['text']})}\n\n"
 
         if kind == "on_chain_end" and node_name == "output":
             output = data.get("output", {})

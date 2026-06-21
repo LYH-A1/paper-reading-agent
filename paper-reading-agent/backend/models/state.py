@@ -79,6 +79,9 @@ class AgentState:
     session_id: str = ""
     followup_questions: list[str] = field(default_factory=list)
 
+    reasoning_log: list[dict] = field(default_factory=list)
+    # Each entry: {"node": "planner"|"generate"|"reviewer", "text": "<reasoning snippet>"}
+
     # Phase 4b: external search
     external_retriever: Any | None = None
     external_results: list = field(default_factory=list)

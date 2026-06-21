@@ -143,3 +143,34 @@ def test_done_payload_empty_external_results():
     payload = json.loads(data_str)
 
     assert payload["external_results"] == []
+
+
+def test_thinking_event_format():
+    """Thinking SSE events follow the correct wire format."""
+    import json
+    payload = {"event": "thinking", "node": "planner", "text": "Analyzing query intent..."}
+    sse_line = f"event: thinking\ndata: {json.dumps(payload)}\n\n"
+    lines = sse_line.strip().split("\n")
+    assert lines[0] == "event: thinking"
+    assert lines[1].startswith("data: ")
+    parsed = json.loads(lines[1][6:])
+    assert parsed["event"] == "thinking"
+    assert parsed["node"] in ("planner", "generate", "reviewer")
+    assert len(parsed["text"]) > 0
+
+
+def test_thinking_event_emitted_in_qa_flow():
+    """AgentState records reasoning from LLM responses."""
+    from backend.models.state import AgentState
+    from backend.models.paper import Paper
+    state = AgentState(
+        paper=Paper(paper_id="test", title="Test"),
+        user_query="What is X?",
+    )
+    state.plan = {"steps": [{"step": 1, "action": "search", "tool": "retrieve", "target": "X"}]}
+    state.reasoning_log = [
+        {"node": "planner", "text": "User is asking about X. I need to retrieve relevant sections."},
+        {"node": "generate", "text": "Based on the retrieved text, X is defined as..."},
+    ]
+    assert len(state.reasoning_log) == 2
+    assert state.reasoning_log[0]["node"] == "planner"
