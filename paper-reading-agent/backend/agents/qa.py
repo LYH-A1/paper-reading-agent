@@ -91,7 +91,8 @@ async def generate_node(state: AgentState) -> AgentState:
         # Phase 1: use chat() (more reliable than streaming for now)
         full_answer, _ = await llm_client.chat(
             messages=[{"role": "user", "content": f"Paper report: {state.report}\n\nContext: {context}\n\nQuestion: {state.user_query}{rewrite_feedback}"}],
-            system=prompt
+            system=prompt,
+            temperature=state.generate_temperature
         )
     except Exception as e:
         logger.error(f"Generate failed: {e}")

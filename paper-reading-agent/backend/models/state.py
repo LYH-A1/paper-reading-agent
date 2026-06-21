@@ -77,6 +77,9 @@ class AgentState:
     error: str | None = None
     reasoning_log: list[dict] = field(default_factory=list)
 
+    # Phase 7: configurable temperature for answer generation (A/B test)
+    generate_temperature: float = 0.3
+
     session_id: str = ""
     followup_questions: list[str] = field(default_factory=list)
 
