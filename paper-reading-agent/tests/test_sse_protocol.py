@@ -145,6 +145,7 @@ def test_done_payload_empty_external_results():
     assert payload["external_results"] == []
 
 
+# -- Phase 6: thinking SSE events --
 def test_thinking_event_format():
     """Thinking SSE events follow the correct wire format."""
     import json
@@ -174,3 +175,28 @@ def test_thinking_event_emitted_in_qa_flow():
     ]
     assert len(state.reasoning_log) == 2
     assert state.reasoning_log[0]["node"] == "planner"
+
+# -- Phase 7: classify_plan node --
+def test_classify_plan_combined_output():
+    """classify_plan_node produces both intent and plan in state."""
+    from backend.models.state import AgentState
+    from backend.agents.qa import classify_plan_node
+    from backend.models.paper import Paper
+
+    state = AgentState(
+        paper=Paper(paper_id="test", title="Attention Is All You Need"),
+        user_query="What is the Transformer architecture?",
+    )
+    assert state.intent == ""  # Initially empty
+    assert state.plan is None  # Initially None
+
+
+def test_classify_plan_keyword_fallback():
+    """When LLM fails, keyword fallback sets intent and default plan."""
+    from backend.agents.qa import _keyword_classify
+
+    assert _keyword_classify("summarize this paper") == "summary"
+    assert _keyword_classify("compare BERT with GPT") == "compare"
+    assert _keyword_classify("what is attention") == "qa"
+    assert _keyword_classify("recommend similar papers") == "recommend"
+    assert _keyword_classify("xyzzy unknown") == "qa"  # default

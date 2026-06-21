@@ -29,6 +29,31 @@ Intent definitions:
 User question: {query}
 Paper title: {title}'''
 
+CLASSIFY_PLAN_PROMPT = '''Classify the user's question about an academic paper AND generate an execution plan.
+
+Output ONLY a JSON object with BOTH "intent" and "steps" fields:
+{
+  "intent": "qa",
+  "steps": [
+    {"step": 1, "action": "retrieve relevant context", "tool": "retrieve", "target": "Transformer architecture details"}
+  ]
+}
+
+Intent definitions:
+- "summary": user wants an overview or summary of the paper
+- "qa": user wants a specific question answered about the paper content
+- "compare": user wants to compare this paper with other work
+- "recommend": user wants recommendations for related papers
+
+Plan rules:
+- summary: 3 steps (retrieve key sections → synthesize overview → identify limitations)
+- qa: 3-5 steps retrieving specific sections relevant to the question
+- compare: 4 steps (retrieve method → retrieve results → search external → compare)
+- recommend: 3 steps (retrieve contributions → search related → rank recommendations)
+
+User question: {query}
+Paper title: {title}'''
+
 PLANNER_PROMPTS = {
     "summary": "Generate a 3-step execution plan for summarizing the paper.\nOutput: {\"steps\": [{\"step\": 1, \"action\": \"...\", \"tool\": \"retrieve\", \"target\": \"...\"}]}",
     "qa": "Generate a 3-5 step execution plan for answering the question.\nOutput: {\"steps\": [{\"step\": 1, \"action\": \"...\", \"tool\": \"retrieve\", \"target\": \"...\"}]}",

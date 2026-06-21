@@ -12,7 +12,7 @@ from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from backend.models.state import AgentState
 from backend.models.paper import Paper
 from backend.agents.reader import reader_node
-from backend.agents.qa import classify_node, planner_node, retrieve_node, generate_node, observe_node, check_observe_result, external_search_node, route_after_retrieve
+from backend.agents.qa import classify_plan_node, retrieve_node, generate_node, observe_node, check_observe_result, external_search_node, route_after_retrieve
 from backend.agents.reviewer import reviewer_node, rewrite_node, decide_loop, output_node
 from backend.agents.verify import verify_citation_node
 from backend.config import config
@@ -26,7 +26,7 @@ def should_interrupt(state: AgentState) -> list[str]:
     Returns ["planner"] to interrupt after planner, or [] to continue.
     """
     if state.intent in ("compare", "recommend"):
-        return ["planner"]
+        return ["classify_plan"]
     return []
 
 
@@ -52,8 +52,7 @@ async def build_graph() -> StateGraph:
     graph = StateGraph(AgentState)
 
     graph.add_node("reader", reader_node)
-    graph.add_node("classify", classify_node)
-    graph.add_node("planner", planner_node)
+    graph.add_node("classify_plan", classify_plan_node)
     graph.add_node("retrieve", retrieve_node)
     graph.add_node("generate", generate_node)
     graph.add_node("observe", observe_node)
@@ -64,9 +63,8 @@ async def build_graph() -> StateGraph:
     graph.add_node("external_search", external_search_node)
 
     graph.set_entry_point("reader")
-    graph.add_edge("reader", "classify")
-    graph.add_edge("classify", "planner")
-    graph.add_edge("planner", "retrieve")
+    graph.add_edge("reader", "classify_plan")
+    graph.add_edge("classify_plan", "retrieve")
     graph.add_conditional_edges("retrieve", route_after_retrieve, {
         "external_search": "external_search",
         "generate": "generate",
@@ -94,7 +92,7 @@ async def build_graph() -> StateGraph:
     checkpointer = AsyncSqliteSaver(conn)
     return graph.compile(
         checkpointer=checkpointer,
-        interrupt_after=["planner"],  # HITL: pause after plan generation
+        interrupt_after=["classify_plan"],  # HITL: pause after plan generation
     )
 
 
@@ -111,7 +109,7 @@ async def run_agent(paper_id: str, query: str) -> AgentState:
     )
     config_dict = {"configurable": {"thread_id": paper_id or str(uuid.uuid4())}}
 
-    # Run through to planner (will interrupt)
+    # Run through to classify_plan (will interrupt)
     raw_state = await graph.ainvoke(initial_state, config_dict)
     state = AgentState(**{k: v for k, v in raw_state.items() if k in AgentState.__dataclass_fields__})
     _restore_paper_identity(state, initial_state)
@@ -194,7 +192,7 @@ async def stream_graph(
 
         # Yield node-enter events
         if kind == "on_chain_start" and node_name in (
-            "reader", "classify", "planner",
+            "reader", "classify_plan",
         ):
             yield f"event: node\ndata: {json.dumps({'event': 'node', 'node': node_name})}\n\n"
 
@@ -204,8 +202,8 @@ async def stream_graph(
             if delta:
                 yield f"event: token\ndata: {json.dumps({'event': 'token', 'token': delta})}\n\n"
 
-        # After planner completes, check if we should HITL
-        if kind == "on_chain_end" and node_name == "planner":
+        # After classify_plan completes, check if we should HITL
+        if kind == "on_chain_end" and node_name == "classify_plan":
             # Extract state from output
             output = data.get("output", {})
             if isinstance(output, dict):
